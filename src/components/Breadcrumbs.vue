@@ -2,7 +2,7 @@
 import { computed, onBeforeUpdate, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { shortenAddr10, shortenTx } from '@/utils/utils';
-import { AddressCache } from '@/cache';
+import { AddressCache } from '@/cache/address/address';
 
 const route = useRoute();
 const pageHasParams = computed(() => Object.keys(route.params).length > 0);
@@ -19,7 +19,10 @@ const newRouteValue = ref<PrevRouteValue | null>(null);
 
 const isEmptyNewRouteValue = computed(() => {
   return (
-    !newRouteValue.value || !newRouteValue.value.link.length || !newRouteValue.value.text.length
+    !newRouteValue.value ||
+    !newRouteValue.value.link.length ||
+    !newRouteValue.value.text.length ||
+    !newRouteValue.value.type.length
   );
 });
 
@@ -68,8 +71,8 @@ const addressBreadcrumb = (address: string) => {
 </script>
 
 <template>
-  <div class="breadcrumbs">
-    <span v-if="$route.name !== 'main' && $route.name !== 'settings' && $route.name !== 'address'">
+  <div v-if="$route.name !== 'main'" class="breadcrumbs">
+    <span v-if="$route.name !== 'settings' && $route.name !== 'address'">
       / {{ $route.name }} {{ pageHasParams ? '/' : '' }}
       {{ $route.params.tx?.length ? shortenTx($route.params.tx as string) : '' }}
       {{ $route.params.block?.length ? $route.params.block : '' }}

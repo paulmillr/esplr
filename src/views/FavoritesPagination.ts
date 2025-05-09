@@ -1,4 +1,4 @@
-import { AddressCache } from '@/cache';
+import { AddressCache } from '@/cache/address/address';
 import type { TransactionListItem } from '@/types';
 import {
   getLatestTxnsWithBlockDetails,

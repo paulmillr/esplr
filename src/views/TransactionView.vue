@@ -2,7 +2,8 @@
 import { onMounted, inject, ref, watch, type Ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { Web3Provider } from 'micro-eth-signer/net';
-import type { TokenTransfer, TxInfo } from 'node_modules/micro-eth-signer/net/archive';
+// import { decodeEvent } from 'micro-eth-signer/abi';
+import type { TokenTransfer, TxInfo, TxReceipt } from 'node_modules/micro-eth-signer/net/archive';
 import {
   formatTimestampLocal,
   getTransactionMethodName,
@@ -10,6 +11,7 @@ import {
   getTransferValue,
   fromWeiToEth,
   concatTransfers,
+  roundToTwo,
 } from '@/utils/utils';
 import { getTokenTransfersForTxn } from '@/utils/network';
 
@@ -23,7 +25,7 @@ type TxnType = '' | 'legacy' | 'eip2930' | 'eip1559' | 'eip4844' | 'eip7702';
 type TxnInfo = {
   type: TxnType;
   info: TxInfo;
-  receipt: unknown;
+  receipt: TxReceipt;
   raw?: string;
 };
 
@@ -34,8 +36,10 @@ type NetTransfer = {
 };
 
 const txnInfo = ref<TxnInfo | null>(null);
+const txnReceipt = ref<TxReceipt | null>(null);
 const isLoadingTxnBaseInfo = ref(false);
 const isLoadingTxnTokenTransfers = ref(false);
+const isLoadingBlockConfirmations = ref(false);
 
 const transactionHash = ref('');
 const blockConfirmations = ref(0);
@@ -47,6 +51,9 @@ const value = ref(0);
 const type = ref('');
 const nonce = ref(0);
 const transactionIndex = ref(0);
+const gasUsed = ref(0n);
+const gasLimit = ref(0n);
+const input = ref('');
 
 const transactionError = ref(false);
 const transfersError = ref(false);
@@ -66,6 +73,7 @@ watch(
 
 const mount = async (tx: string) => {
   isLoadingTxnBaseInfo.value = true;
+  isLoadingBlockConfirmations.value = true;
   transactionHash.value = tx;
 
   let txn: TxnInfo;
@@ -79,6 +87,16 @@ const mount = async (tx: string) => {
     return;
   }
   txnInfo.value = txn;
+  txnReceipt.value = txn.receipt ?? null;
+
+  // console.log('Transaction:', txn);
+  // const address = txn.receipt.logs[3]?.address;
+  // const topics = txn.receipt.logs[3]?.topics;
+  // const data = txn.receipt.logs[3]?.data;
+  // if (topics) {
+  //   const test = decodeEvent(address, topics, data);
+  //   console.log('Decoded event:', test);
+  // }
 
   const { hash, from, to, blockNumber } = txn.info;
   try {
@@ -88,14 +106,6 @@ const mount = async (tx: string) => {
   } catch (error) {
     blockError.value = true;
     console.error('Error loading block details:', error);
-  }
-
-  try {
-    blockConfirmationsError.value = false;
-    blockConfirmations.value = (await prov.height()) - blockNumber + 1;
-  } catch (error) {
-    blockConfirmationsError.value = true;
-    console.error(error);
   }
 
   // TODO: fix ts ignores below
@@ -109,7 +119,19 @@ const mount = async (tx: string) => {
   // @ts-ignore
   nonce.value = txn.info.nonce;
   transactionIndex.value = txn.info.transactionIndex;
+  gasUsed.value = txn.receipt.gasUsed;
+  gasLimit.value = txn.info.gas;
+  input.value = txn.info.input;
   isLoadingTxnBaseInfo.value = false;
+
+  try {
+    blockConfirmationsError.value = false;
+    blockConfirmations.value = (await prov.height()) - blockNumber + 1;
+  } catch (error) {
+    blockConfirmationsError.value = true;
+    console.error(error);
+  }
+  isLoadingBlockConfirmations.value = false;
 
   try {
     transfersError.value = false;
@@ -156,16 +178,23 @@ const mount = async (tx: string) => {
 
     <div class="field block">
       <div class="field-title">Block:</div>
-      <div v-if="!isLoadingTxnBaseInfo && txnInfo" class="confirmations">
+      <div v-if="!isLoadingTxnBaseInfo && txnInfo" class="block-info">
         <RouterLink class="link" :to="`/block/${txnInfo.info.blockNumber}`">
           {{ txnInfo.info.blockNumber }}
         </RouterLink>
-        <span v-if="blockConfirmationsError" class="warning" style="margin-left: 5px">
-          <i class="bi bi-exclamation-triangle"></i>
-          Block confirmations could not be loaded. Probably because of the Ethereum node
-          limitations.
-        </span>
-        <span v-else class="label small">{{ blockConfirmations }} Block Confirmations</span>
+        <div class="block-confirmations" v-if="!isLoadingBlockConfirmations">
+          <span v-if="blockConfirmationsError" class="warning" style="margin-left: 5px">
+            <i class="bi bi-exclamation-triangle"></i>
+            Block confirmations could not be loaded. Probably because of the Ethereum node
+            limitations.
+          </span>
+          <span v-else class="label small">{{ blockConfirmations }} Block Confirmations</span>
+        </div>
+        <div class="block-confirmations" v-else>
+          <div class="label small">
+            <span class="spinner"></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -264,6 +293,16 @@ const mount = async (tx: string) => {
     </div>
 
     <div class="field">
+      <div class="field-title">Gas Used & Limit:</div>
+      <div class="eth-value" v-if="!isLoadingTxnBaseInfo">
+        {{ gasUsed > 0 ? gasUsed : '-' }} / {{ gasLimit > 0 ? gasLimit : '-' }}
+        <span v-if="gasUsed > 0 && gasLimit > 0">
+          ({{ roundToTwo((Number(gasUsed) / Number(gasLimit)) * 100) }}%)
+        </span>
+      </div>
+    </div>
+
+    <div class="field">
       <div class="field-title">Other attributes:</div>
       <div v-if="!isLoadingTxnBaseInfo" class="other-attributes">
         <span class="label small">Txn type: {{ type.toUpperCase() }}</span>
@@ -271,10 +310,92 @@ const mount = async (tx: string) => {
         <span class="label small">Position in block: {{ transactionIndex }}</span>
       </div>
     </div>
+
+    <div class="field">
+      <div class="field-title">Input:</div>
+      <div v-if="!isLoadingTxnBaseInfo" class="field-value">
+        <div v-if="input.length > 0" class="input-data">
+          {{ input }}
+        </div>
+        <div v-else>-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="details-header">
+    <div style="display: flex; justify-content: space-between; width: 100%; align-items: baseline">
+      <span style="display: flex; align-items: center; gap: 7px">
+        <b>Logs:</b>
+        <span v-if="isLoadingTxnBaseInfo" class="spinner"></span>
+      </span>
+      <span class="label"># log index</span>
+    </div>
+  </div>
+
+  <div v-if="!transactionError" class="info">
+    <div class="horizontal-field">
+      <div v-if="txnReceipt && txnReceipt.logs.length">
+        <div class="log-field" v-for="(log, logIndex) in txnReceipt.logs" :key="logIndex">
+          <div>
+            <div class="field-title">Address:</div>
+            <span class="label small" style="float: right; margin-top: 3px">{{
+              log.logIndex
+            }}</span>
+            <div>
+              <RouterLink class="link" :to="`/address/${log.address}`">
+                {{ log.address }}
+              </RouterLink>
+            </div>
+          </div>
+          <div>
+            <div class="field-title">Topics:</div>
+            <div v-for="(topic, logTopicIndex) in log.topics" :key="logTopicIndex">
+              <span class="font-600">{{ logTopicIndex }}. </span><br />
+              <span class="topic">{{ topic }}</span>
+            </div>
+            <div v-if="!log.topics.length">-</div>
+          </div>
+          <div>
+            <div class="field-title">Data:</div>
+            <div class="log-data">
+              <span class="topic">
+                {{ log.data }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else>-</div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.topic {
+  font-size: 16px;
+}
+
+.log-field {
+  display: flex;
+  flex-direction: column;
+  padding: 7px 0px;
+  border-bottom: 1px solid var(--ash-grey);
+}
+
+.font-600 {
+  font-weight: 600;
+}
+
+.log-data {
+  overflow-y: scroll;
+  max-height: 103px;
+}
+
+.input-data {
+  overflow-y: scroll;
+  max-height: 130px;
+}
+
 .header {
   margin-top: 20px;
   margin-bottom: 15px;
@@ -289,6 +410,11 @@ const mount = async (tx: string) => {
 }
 
 .tx-hash {
+  font-size: 18px;
+  word-break: break-word;
+}
+
+.field-value {
   font-size: 18px;
   word-break: break-word;
 }
@@ -332,6 +458,12 @@ const mount = async (tx: string) => {
   }
 }
 
+.horizontal-field {
+  padding: 7px 0px;
+  font-size: 18px;
+  word-break: break-word;
+}
+
 .transfers-block {
   flex-direction: column;
 }
@@ -346,7 +478,8 @@ const mount = async (tx: string) => {
   word-break: break-word;
 }
 
-.field:last-child {
+.field:last-child,
+.log-field:last-child {
   border-bottom: none;
 }
 
@@ -400,7 +533,7 @@ const mount = async (tx: string) => {
   margin-left: 0px;
 }
 
-.confirmations {
+.block-info {
   display: flex;
   align-items: flex-start;
   flex-direction: column;
@@ -408,10 +541,14 @@ const mount = async (tx: string) => {
 }
 
 @media (min-width: 650px) {
-  .confirmations {
+  .block-info {
     flex-direction: row;
     align-items: center;
   }
+}
+
+.block-confirmations {
+  display: flex;
 }
 
 .token-transfer {

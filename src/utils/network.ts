@@ -1,21 +1,21 @@
+import type { NetTransfer } from '@/types';
+import { isERC20TokenInfo } from '@/utils/utils';
+import { TOKENS } from 'micro-eth-signer/abi';
 import type { Web3Provider } from 'micro-eth-signer/net';
 import type {
-  TokenBalances,
   BlockInfo,
+  TokenBalances,
   TxReceipt,
 } from 'node_modules/micro-eth-signer/net/archive';
-import type { NetTransfer } from '@/types';
-import { TOKENS } from 'micro-eth-signer/abi';
-import { isERC20TokenInfo } from '@/utils/utils';
 
 import type {
-  OtsSearchTransactionsBeforeResponse,
-  OtsSearchTransaction,
-  OtsGetBlockDetailsResponse,
   ERC20TokenInfo,
+  OtsGetBlockDetailsResponse,
+  OtsSearchTransaction,
+  OtsSearchTransactionExtended,
+  OtsSearchTransactionsBeforeResponse,
   TokenBalance,
   TxInfoExtended,
-  OtsSearchTransactionExtended,
 } from '@/types';
 
 export const getBlockDetailsByHash = async (
@@ -138,7 +138,7 @@ export const loadTokenInfoByBalances = async (
 
   const noData = tokens.some((t) => t.info === null || t.balance === null);
   if (noData) {
-    throw new Error('Error fetching token info.');
+    throw new Error('Error loading token info');
   }
 
   const withSymbol = tokens.filter((t) => t.info?.symbol?.length);
@@ -233,7 +233,7 @@ export const getPositiveTokenBalances = async (prov: Web3Provider, address: stri
     return balance instanceof Map && typeof balance.get(1n) === 'bigint';
   });
   if (!noErrors) {
-    throw new Error('Error fetching token balances.');
+    throw new Error('Error loading token balances');
   }
 
   return Object.fromEntries(
@@ -258,7 +258,7 @@ export const getTokenTransfersForTxn = async (
   ).filter((t) => t.hash === hash);
 
   if (!Array.isArray(txnTransfers) || (txnTransfers.length && !txnTransfers[0].tokenTransfers)) {
-    throw new Error('Error fetching token transfers.');
+    throw new Error('Error loading token transfers');
   }
 
   const tokenTransfers = txnTransfers.length ? txnTransfers[0].tokenTransfers : [];

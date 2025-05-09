@@ -1,23 +1,28 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, inject, type Ref } from 'vue';
 import { Chainlink, Web3Provider } from 'micro-eth-signer/net';
-import { AddressCache } from '@/cache';
-import { MainPageCache } from '@/cache/mainPage';
+import { AddressCache } from '@/cache/address/address';
+import { MainPageCache } from '@/cache/main-page/main-page';
 import Checkbox from '@/components/Checkbox.vue';
 import { useAppStore } from '@/stores/app';
 import { useSettingsStore } from '@/stores/settings';
+import LocalStorage from '@/components/settings-view/LocalStorage.vue';
 
 const provider = inject<Ref<Web3Provider>>('provider');
 if (!provider) throw new Error('Provider not found!');
 const prov = ref<Web3Provider>(provider.value);
 
 const cashedAddresses = ref<string[]>([]);
+const favoriteAddresses = ref<string[]>([]);
 const cache = AddressCache.getInstance();
 const mainDataCache = MainPageCache.getInstance();
+const hasMainPageCache = ref(mainDataCache.hasAnyData());
 
 const settingsStore = useSettingsStore();
 const appStore = useAppStore();
 const priceError = ref(false);
+const cacheUpdateIntervals = [1, 5, 15, 60];
+const urlRouting = ref(sessionStorage.getItem('urlRouting') === 'false' ? false : true);
 
 const networkName = computed(() =>
   appStore.networkName === 'Mainnet' ? 'Ethereum Mainnet' : appStore.networkName
@@ -25,16 +30,29 @@ const networkName = computed(() =>
 
 onMounted(() => {
   cashedAddresses.value = cache.allCachedAddresses();
+  favoriteAddresses.value = [...cache.getFavoriteAddresses()];
+  hasMainPageCache.value = mainDataCache.hasAnyData();
 });
 
 const handleDisconnect = async () => {
+  cache.clearAll();
+  mainDataCache.clear();
   location.reload();
 };
 
 const handleClearCache = () => {
   cache.clear();
   mainDataCache.clear();
-  cashedAddresses.value = [];
+  cashedAddresses.value = cache.allCachedAddresses();
+  favoriteAddresses.value = [...cache.getFavoriteAddresses()];
+  hasMainPageCache.value = mainDataCache.hasAnyData();
+};
+
+const handleDeleteFavorites = () => {
+  cache.clearFavorites();
+  mainDataCache.clearFavorites();
+  cashedAddresses.value = cache.allCachedAddresses();
+  favoriteAddresses.value = [...cache.getFavoriteAddresses()];
 };
 
 const priceTryError = () => {
@@ -64,6 +82,20 @@ const handleShowUsdPrices = async () => {
   }
   settingsStore.toggleShowUsdPrices();
 };
+
+const handleCacheUpdateInterval = (minutes: number) => {
+  settingsStore.setCacheUpdateInterval(minutes);
+};
+
+const toggleUrlRouting = () => {
+  urlRouting.value = !urlRouting.value;
+  if (sessionStorage.getItem('urlRouting') === 'false') {
+    sessionStorage.removeItem('urlRouting');
+  } else {
+    sessionStorage.setItem('urlRouting', 'false');
+  }
+  location.replace('/');
+};
 </script>
 
 <template>
@@ -82,6 +114,20 @@ const handleShowUsdPrices = async () => {
       Disconnect <i class="bi bi-door-closed"></i>
     </button>
   </div>
+
+  <div>
+    <h4>URL routing</h4>
+    <div class="description">
+      <p>
+        When enabled, app routes are reflected in the URL. For example,
+        <code>/address/0x1234567890abcdef1234567890abcdef12345678</code>.
+      </p>
+      <p>⚠️ Change reloads the page, causing loss of cached data if local storage is off.</p>
+      <Checkbox @onChange="toggleUrlRouting" label="URL routing" :checked="urlRouting" />
+    </div>
+  </div>
+
+  <LocalStorage />
 
   <div>
     <h4>Tokens Prices:</h4>
@@ -103,16 +149,42 @@ const handleShowUsdPrices = async () => {
   </div>
 
   <div>
-    <h4>Addresses with cached data:</h4>
+    <h4>Cache update interval in minutes:</h4>
+    <Checkbox
+      v-for="interval in cacheUpdateIntervals"
+      :key="interval"
+      :label="String(interval)"
+      :checked="settingsStore.cacheUpdateInterval === interval"
+      class="cache-checkbox"
+      @onChange="() => handleCacheUpdateInterval(interval)"
+    />
+  </div>
+
+  <div>
+    <h4>Cached data:</h4>
+    <div v-if="cashedAddresses.length">Cached addresses:</div>
     <ul v-if="cashedAddresses.length" class="cached-list">
       <li v-for="address in cashedAddresses" :key="address">
         <RouterLink :to="`/address/${address}`">{{ address }}</RouterLink>
       </li>
     </ul>
-    <div v-else>No cached data.</div>
-    <button v-if="cashedAddresses.length" class="btn btn-dark" @click="handleClearCache">
-      Clear cache
-    </button>
+    <div v-if="hasMainPageCache">Main page is cached.</div>
+    <div v-if="favoriteAddresses.length">Favorites addresses list is cached.</div>
+    <div class="clear-cache-btn-wrapper">
+      <button
+        v-if="cashedAddresses.length || hasMainPageCache"
+        class="btn btn-dark"
+        @click="handleClearCache"
+      >
+        Clear all cache
+      </button>
+      <button v-if="favoriteAddresses.length" class="btn btn-dark" @click="handleDeleteFavorites">
+        Delete all favorites
+      </button>
+    </div>
+    <div v-if="!hasMainPageCache && !favoriteAddresses.length && !cashedAddresses.length">
+      No cached data.
+    </div>
   </div>
 </template>
 
@@ -159,5 +231,18 @@ h4 {
 
 .connected-to {
   word-break: break-word;
+}
+
+.cache-checkbox {
+  margin-right: 10px;
+}
+
+.clear-cache-btn-wrapper {
+  margin-top: 10px;
+}
+
+.clear-cache-btn-wrapper {
+  display: flex;
+  gap: 7px;
 }
 </style>

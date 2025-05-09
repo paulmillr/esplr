@@ -16,6 +16,7 @@ const props = defineProps<{
   lastUpdateTimestamp: number;
   tokenCreator: OtsGetContractCreatorResponse | null;
   tokenInfo: ERC20TokenInfo | null;
+  ensName: string;
   loadingUnspent: boolean;
   tokensError: boolean;
   tokensPricesError: boolean;
@@ -32,6 +33,7 @@ const handleUpdateData = (addresses: string[]) => {
   <div class="header">
     <AddressHeaderAddrInfo
       :address="address"
+      :ensName="ensName"
       :sumUnspentTxns="sumUnspentTxns"
       :lastUpdateTimestamp="lastUpdateTimestamp"
       :isContract="!!props.tokenCreator"
