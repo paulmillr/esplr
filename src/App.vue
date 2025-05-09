@@ -20,6 +20,9 @@ const provider = ref<Web3Provider>();
 
 provide('provider', provider);
 
+// All network requests from the app are done from this file
+// ---------------------------------------------------------
+
 const handleConnect = async (url: string) => {
   connectionError.value = false;
   const j = jsonrpc(

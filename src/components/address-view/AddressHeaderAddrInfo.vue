@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { onBeforeUpdate, onMounted, ref } from 'vue';
 import { formatTimestampLocalWithoutYear } from '@/utils/utils';
-import { AddressCache } from '@/cache';
+import { AddressCache } from '@/cache/address/address';
+import { MainPageCache } from '@/cache/main-page/main-page';
 import { useAppStore } from '@/stores/app';
 
 const appStore = useAppStore();
 const emit = defineEmits(['updateData']);
 const cache = AddressCache.getInstance();
+const mainDataCache = MainPageCache.getInstance();
 const isFavorite = ref(false);
 
 const props = defineProps<{
   address: string;
+  ensName: string;
   sumUnspentTxns: bigint;
   lastUpdateTimestamp: number;
   loadingUnspent: boolean;
@@ -36,6 +39,7 @@ const toggleFavorite = () => {
   } else {
     cache.addFavoriteAddress(props.address);
   }
+  mainDataCache.clearFavorites();
   isFavorite.value = cache.isFavoriteAddress(props.address);
 };
 </script>
@@ -49,6 +53,14 @@ const toggleFavorite = () => {
       </div>
       <div v-if="isContract" class="warning">
         <i class="bi bi-info-circle"></i> Contract address
+      </div>
+
+      <div class="ens-name" v-if="ensName.length || loadingUnspent">
+        <b>ENS: </b>
+        <span v-if="loadingUnspent" class="spinner"></span>
+        <span>
+          {{ ensName }}
+        </span>
       </div>
 
       <div class="txns-sent" v-if="!isContract">
@@ -166,5 +178,9 @@ const toggleFavorite = () => {
 .txns-sent-warning {
   margin-top: -5px;
   font-size: 17px;
+}
+
+.ens-name {
+  word-break: break-word;
 }
 </style>

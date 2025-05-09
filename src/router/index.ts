@@ -8,7 +8,10 @@ import BlockTransactions from '@/views/BlockTransactions.vue';
 
 const router = createRouter({
   // history: createWebHistory(import.meta.env.BASE_URL),
-  history: createMemoryHistory(),
+  history:
+    sessionStorage.getItem('urlRouting') === 'false'
+      ? createMemoryHistory()
+      : createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',

@@ -56,7 +56,9 @@ const mount = async (block: string) => {
   gasUsed.value = details.gasUsed;
   gasLimit.value = details.gasLimit;
   blobGasUsed.value = details?.blobGasUsed ?? 0n;
-  baseFeePerGas.value = `${fromWeiToGwei(details.baseFeePerGas, 9)} Gwei`;
+  baseFeePerGas.value = details.baseFeePerGas
+    ? `${fromWeiToGwei(details.baseFeePerGas, 9)} Gwei`
+    : '-';
 };
 </script>
 
@@ -80,11 +82,12 @@ const mount = async (block: string) => {
             {{ transactionsCount }} txs
           </RouterLink>
         </span>
+        <span v-else>0</span>
       </div>
     </div>
     <div class="field">
       <div class="field-title">Withdrawals:</div>
-      <div class="hash">{{ withdrawalsCount > 0 ? withdrawalsCount : '' }}</div>
+      <div class="hash">{{ withdrawalsCount > 0 ? withdrawalsCount : '-' }}</div>
     </div>
     <div class="field">
       <div class="field-title">Size:</div>
@@ -100,7 +103,7 @@ const mount = async (block: string) => {
     </div>
     <div class="field">
       <div class="field-title">Gas Used:</div>
-      <div class="hash">{{ gasUsed > 0 ? gasUsed : '' }}</div>
+      <div class="hash">{{ gasUsed }}</div>
     </div>
     <div class="field">
       <div class="field-title">Gas Limit:</div>

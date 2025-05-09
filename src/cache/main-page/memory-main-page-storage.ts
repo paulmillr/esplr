@@ -1,10 +1,9 @@
 import type { TxInfoExtended, TransactionListItem } from '@/types';
 import type { BlockInfo } from 'node_modules/micro-eth-signer/net/archive';
+import { type MainPageStorage } from '@/cache/main-page/main-page-storage';
 
-export class MainPageCache {
-  private static instance: MainPageCache = new MainPageCache();
-
-  private constructor() {}
+export class MemoryMainPageStorage implements MainPageStorage {
+  private static instance: MemoryMainPageStorage;
 
   private gasPriceGwei: string = '';
   private maxPriorityFeeGwei: string = '';
@@ -15,8 +14,17 @@ export class MainPageCache {
   private ethPrice = 0;
   private lastUpdateTimestamp = 0;
 
-  static getInstance(): MainPageCache {
-    return MainPageCache.instance;
+  private constructor() {}
+
+  static getInstance(): MemoryMainPageStorage {
+    if (!MemoryMainPageStorage.instance) {
+      MemoryMainPageStorage.instance = new MemoryMainPageStorage();
+    }
+    return MemoryMainPageStorage.instance;
+  }
+
+  getType(): string {
+    return 'memory';
   }
 
   clear(): void {
@@ -28,6 +36,11 @@ export class MainPageCache {
     this.lastTxns = [];
     this.ethPrice = 0;
     this.lastUpdateTimestamp = 0;
+  }
+
+  clearFavorites(): void {
+    this.favoriteAddresses = [];
+    this.favoriteTxns = [];
   }
 
   hasData(): boolean {
@@ -42,6 +55,19 @@ export class MainPageCache {
   }
   hasDataWithPrice(): boolean {
     return this.hasData() && this.ethPrice !== 0;
+  }
+
+  hasAnyData(): boolean {
+    return (
+      this.gasPriceGwei !== '' ||
+      this.maxPriorityFeeGwei !== '' ||
+      this.favoriteAddresses.length !== 0 ||
+      this.favoriteTxns.length !== 0 ||
+      this.lastBlocks.length !== 0 ||
+      this.lastTxns.length !== 0 ||
+      this.ethPrice !== 0 ||
+      this.lastUpdateTimestamp !== 0
+    );
   }
 
   setEthPrice(ethPrice: number): void {

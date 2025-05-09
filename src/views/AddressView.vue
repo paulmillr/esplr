@@ -2,7 +2,7 @@
 import { onMounted, inject, watch, ref, type Ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { Web3Provider, Chainlink } from 'micro-eth-signer/net';
-import { CACHE_INTERVAL_MINUTES } from '@/config';
+import { ENS } from 'micro-eth-signer/net';
 import { ETH_DECIMALS } from '@/constants';
 import {
   getERC20TokenInfo,
@@ -30,7 +30,8 @@ import TransactionsList from '@/components/address-view/TransactionsList.vue';
 
 import { useSettingsStore } from '@/stores/settings';
 import { useAppStore } from '@/stores/app';
-import { AddressCache } from '@/cache';
+import { AddressCache } from '@/cache/address/address';
+import { MainPageCache } from '@/cache/main-page/main-page';
 import { DetailsPagination } from '@/views/DetailsPagination';
 import { FavoritesPagination } from '@/views/FavoritesPagination';
 
@@ -51,6 +52,7 @@ const transactionsList = ref<TransactionListItem[][]>([]);
 /* single address */
 const tokenCreator = ref<OtsGetContractCreatorResponse | null>(null);
 const tokenInfo = ref<ERC20TokenInfo | null>(null);
+const ensName = ref('');
 /* single address */
 
 const loadingTokens = ref(false);
@@ -62,6 +64,8 @@ const loadingPage = ref(false);
 
 const cache = AddressCache.getInstance();
 let updateTokenTransfersRequested = false;
+
+const mainDataCache = MainPageCache.getInstance();
 
 const detailsPagination = DetailsPagination.getInstance(prov, SHOW_TXNS_LIMIT);
 const favoritesPagination = FavoritesPagination.getInstance(prov, SHOW_TXNS_LIMIT, cache);
@@ -90,8 +94,12 @@ const noAddresses = ref(false);
 watch(
   () => route.params.address,
   async (newAddress) => {
+    const address = newAddress as string;
+    const addresses = isFavorites.value
+      ? Array.from(cache.getFavoriteAddresses())
+      : [address.toLowerCase()];
     setTab('internal');
-    await mountOrUpdate([newAddress as string]);
+    await mountOrUpdate(addresses);
   }
 );
 
@@ -109,6 +117,7 @@ const clearState = () => {
   sumUnspentEthUsd.value = 0;
   favorites.value = [];
   noAddresses.value = false;
+  ensName.value = '';
 };
 
 const showOfflineNotice = () => {
@@ -119,9 +128,10 @@ const showOfflineNotice = () => {
 };
 
 onMounted(async () => {
+  const address = route.params.address as string;
   const addresses = isFavorites.value
     ? Array.from(cache.getFavoriteAddresses())
-    : [route.params.address as string];
+    : [address.toLowerCase()];
   await mountOrUpdate(addresses);
 });
 
@@ -131,7 +141,7 @@ const mountOrUpdate = async (addresses: string[]) => {
 
   if (cache.hasUpdatedAtTimestampForEveryAddress(addresses) && online) {
     const lastUpdateTimestamp = cache.getLowestUpdatedAtTimestampForAddresses(addresses);
-    if (hasMinutesPassed(lastUpdateTimestamp, CACHE_INTERVAL_MINUTES)) {
+    if (hasMinutesPassed(lastUpdateTimestamp, settingsStore.cacheUpdateInterval)) {
       await updateData(addresses);
       return;
     }
@@ -200,7 +210,6 @@ const injectUsdToUnspent = async (unspent: UnspentWithUsd) => {
 };
 
 const getAddrUnspent = async (address: string) => {
-  // cache.removeUnspent(address);
   if (cache.hasUnspent(address)) {
     const unspent = cache.getUnspent(address) ?? null;
     if (settingsStore.showUsdPrices && unspent && !unspent.usdBalance) {
@@ -241,6 +250,21 @@ const getAddrUnspent = async (address: string) => {
   return unspent;
 };
 
+const getENSName = async (address: string) => {
+  if (cache.hasEns(address)) {
+    return cache.getEns(address) ?? '';
+  }
+  try {
+    const ens = new ENS(prov);
+    const name = (await ens.addressToName(address)) ?? '';
+    cache.addEns(address, name);
+    return name;
+  } catch (error) {
+    console.error(error);
+    return '';
+  }
+};
+
 const loadUnspentWithContractDetails = async (addresses: string[]) => {
   setLoadingUnspent(true);
   unspentPriceError.value = false;
@@ -248,14 +272,16 @@ const loadUnspentWithContractDetails = async (addresses: string[]) => {
 
   const allUnspent = await Promise.all(
     addresses.map(async (address: string) => {
-      const [contractCreator, unspent] = await Promise.all([
+      const [contractCreator, unspent, ensAddressName] = await Promise.all([
         getContractCreator(address),
         getAddrUnspent(address),
+        getENSName(address),
       ]);
       return {
         address,
         contractCreator,
         unspent,
+        ensAddressName,
       };
     })
   );
@@ -263,7 +289,7 @@ const loadUnspentWithContractDetails = async (addresses: string[]) => {
   if (isFavorites.value) {
     favorites.value = allUnspent;
   } else {
-    const { contractCreator, address } = allUnspent[0];
+    const { contractCreator, address, ensAddressName } = allUnspent[0];
     if (contractCreator || appStore.otsApiError) {
       // anyway info and creator will be null if there are no data
       try {
@@ -273,6 +299,7 @@ const loadUnspentWithContractDetails = async (addresses: string[]) => {
       }
       tokenCreator.value = contractCreator;
     }
+    ensName.value = ensAddressName;
   }
 
   // TODO: check that worked correctly after adding possibility to add contract addresses to favorites
@@ -296,7 +323,6 @@ const loadUnspentWithContractDetails = async (addresses: string[]) => {
 };
 
 const getContractCreator = async (address: string) => {
-  // cache.removeTokenCreator(address);
   if (cache.hasTokenCreator(address)) {
     return cache.getTokenCreator(address) ?? null;
   }
@@ -649,6 +675,7 @@ const updatePagesState = (pagination: DetailsPagination | FavoritesPagination) =
 
 const deleteFavorite = async (address: string) => {
   cache.removeFavoriteAddress(address);
+  mainDataCache.clearFavorites();
   const newAddressList = Array.from(cache.getFavoriteAddresses());
   await mount(newAddressList);
 };
@@ -666,6 +693,7 @@ const deleteFavorite = async (address: string) => {
     :lastUpdateTimestamp="lastUpdateTimestamp"
     :tokenCreator="tokenCreator"
     :tokenInfo="tokenInfo"
+    :ensName="ensName"
     :loadingUnspent="loadingUnspent"
     :tokensError="tokensError"
     :tokensPricesError="tokensPricesError"

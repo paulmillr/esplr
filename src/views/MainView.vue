@@ -3,10 +3,10 @@ import { onMounted, ref, inject, type Ref, watch } from 'vue';
 import { Web3Provider, Chainlink } from 'micro-eth-signer/net';
 import type { BlockInfo } from 'node_modules/micro-eth-signer/net/archive';
 
-import { APP_DESC, CACHE_INTERVAL_MINUTES } from '@/config';
+import { APP_DESC } from '@/config';
 import { useSettingsStore } from '@/stores/settings';
-import { AddressCache } from '@/cache';
-import { MainPageCache } from '@/cache/mainPage';
+import { AddressCache } from '@/cache/address/address';
+import { MainPageCache } from '@/cache/main-page/main-page';
 import type { TxInfoExtended, TransactionListItem } from '@/types';
 import {
   fromWeiToGwei,
@@ -68,7 +68,7 @@ onMounted(async () => {
 const mount = async () => {
   const showPrices = settingsStore.showUsdPrices;
   const lastUpdateTimestamp = mainDataCache.getLastUpdateTimestamp();
-  const timeToUpdate = hasMinutesPassed(lastUpdateTimestamp, CACHE_INTERVAL_MINUTES);
+  const timeToUpdate = hasMinutesPassed(lastUpdateTimestamp, settingsStore.cacheUpdateInterval);
   const hasCache = showPrices ? mainDataCache.hasDataWithPrice() : mainDataCache.hasData();
 
   if (hasCache && !timeToUpdate && !updateRequested) {
@@ -89,7 +89,7 @@ const mount = async () => {
     maxPriorityFeeError.value = false;
   } catch (error) {
     maxPriorityFeeError.value = true;
-    console.error('Error fetching max priority fee:', error);
+    console.error('Error loading max priority fee:', error);
   }
 
   if (showPrices) {
@@ -99,7 +99,7 @@ const mount = async () => {
       priceError.value = false;
     } catch (error) {
       priceError.value = true;
-      console.error('Error fetching ETH price:', error);
+      console.error('Error loading ETH price:', error);
     }
   }
 
@@ -147,7 +147,7 @@ const updateFavoritesFromCache = async () => {
   if (hasFullCache) {
     let cachedTxns: TransactionListItem[][] = [];
     newFavoriteAddresses.forEach((address) => {
-      const txns = addressCache.getInternalTransactions(address) || [];
+      const txns = addressCache.getInternalTransactions(address) ?? [];
       cachedTxns = cachedTxns.concat(txns);
     });
     const uniqueCachedTxns = removeTxnsListItemsDuplicates(cachedTxns);
