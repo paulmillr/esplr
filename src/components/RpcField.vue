@@ -5,15 +5,17 @@ import Checkbox from '@/components/Checkbox.vue';
 const emit = defineEmits(['connect']);
 defineProps<{ connectionError: boolean }>();
 
-const RPC_URL = '';
+const RPC_URL = import.meta.env.VITE_RPC_URL || '';
 const rpcUrl = ref(RPC_URL);
 const remember = ref(false);
 
 const error = ref(false);
 
 onMounted(() => {
-  // auto connect for development
-  // emit('connect', RPC_URL);
+  // auto connect
+  if (RPC_URL !== '') {
+    emit('connect', RPC_URL);
+  }
 
   remember.value = isUrlInLocalStorage();
   if (remember.value) {
