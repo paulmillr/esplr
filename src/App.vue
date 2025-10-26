@@ -27,10 +27,16 @@ const provider = ref<Web3Provider>();
 const microFtch = ftch(fetch, {
   isValidRequest: (reqUrl) => {
     // This disables all requests which
-    // are not headed to Sourcify URL.
-    const { sourcifyUrl } = settingsStore;
-    if (!reqUrl || !reqUrl.length || !sourcifyUrl.length) return false;
-    return reqUrl.startsWith(sourcifyUrl);
+    // are not headed to Sourcify URL or IPFS gateway URL.
+    if (!reqUrl || !reqUrl.length) return false;
+
+    const { sourcifyUrl, ipfsGatewayUrl } = settingsStore;
+    if (!sourcifyUrl.length && !ipfsGatewayUrl.length) return false;
+
+    if (sourcifyUrl.length && reqUrl.startsWith(sourcifyUrl)) return true;
+    if (ipfsGatewayUrl.length && reqUrl.startsWith(ipfsGatewayUrl)) return true;
+
+    return false;
   },
 });
 const net = (url: string) => microFtch(url);

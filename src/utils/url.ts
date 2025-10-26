@@ -1,3 +1,5 @@
+import { DEFAULT_IPFS_GATEWAY_URL } from '@/config';
+
 export function addProtocol(url: string) {
   if (url.startsWith('127.0.0.1') || url.startsWith('localhost')) {
     return `http://${url}`;
@@ -30,9 +32,21 @@ export function hasProtocol(url: string) {
   }
 }
 
-export function ipfsResolve(url: string) {
+export function ipfsResolve(url: string, resolveUrl: string) {
   if (url.startsWith('ipfs://')) {
-    return url.replace('ipfs://', 'https://ipfs.io/ipfs/');
+    const resolve = resolveUrl.length ? resolveUrl : DEFAULT_IPFS_GATEWAY_URL;
+    return url.replace('ipfs://', resolve);
   }
   return url;
+}
+
+export function normalizeIpfsUrl(url: string) {
+  let u = url.trim();
+  if (!u.length) return '';
+  if (!hasValidProtocol(u)) return '';
+  if (!hasProtocol(u)) u = addProtocol(u);
+  u = u.replace(/\/+$/, '');
+  if (!/\/ipfs\/?$/.test(u)) u = `${u}/ipfs/`;
+  if (!/\/$/.test(u)) u = `${u}/`;
+  return u;
 }

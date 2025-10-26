@@ -190,7 +190,6 @@ const toggleFavorite = () => {
 
 @media (min-width: 485px) {
   .last-update {
-    margin-bottom: 15px;
     margin-top: 2px;
     margin-left: 0px;
   }

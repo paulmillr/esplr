@@ -1,4 +1,3 @@
-import { ftch } from 'micro-ftch';
 import type { NetTransfer } from '@/types';
 import { isERC20TokenInfo } from '@/utils/utils';
 import { TOKENS } from 'micro-eth-signer/abi';

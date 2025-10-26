@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-import { SHOW_PRICES, SHOW_IMAGES } from '@/config';
-import { CACHE_INTERVAL_MINUTES } from '@/config';
+import { SHOW_PRICES, SHOW_IMAGES, CACHE_INTERVAL_MINUTES } from '@/config';
+import { normalizeIpfsUrl } from '@/utils/url';
 
 let cached = null;
 const localStorageSettings = localStorage.getItem('settings');
@@ -10,11 +10,22 @@ if (localStorageSettings?.length) {
 }
 
 const SOURCIFY_URL = import.meta.env.VITE_SOURCIFY_URL || '';
+const IPFS_GATEWAY_URL = import.meta.env.VITE_IPFS_GATEWAY_URL || '';
 const localStorageSourcifyUrl = localStorage.getItem('sourcifyUrl') ?? '';
+const localStorageIpfsGatewayUrl = localStorage.getItem('ipfsGatewayUrl') ?? '';
+
 if (SOURCIFY_URL.length && localStorageSourcifyUrl.length) {
   localStorage.removeItem('sourcifyUrl');
 }
 const initialSourcifyUrl = SOURCIFY_URL.length ? SOURCIFY_URL : localStorageSourcifyUrl;
+
+if (IPFS_GATEWAY_URL.length && localStorageIpfsGatewayUrl.length) {
+  localStorage.removeItem('ipfsGatewayUrl');
+}
+const initialIpfsGatewayUrl =
+  normalizeIpfsUrl(IPFS_GATEWAY_URL) ||
+  IPFS_GATEWAY_URL ||
+  localStorageIpfsGatewayUrl;
 
 export const useSettingsStore = defineStore('settings', () => {
   const showUsdPrices = ref(cached?.usdPrices ?? SHOW_PRICES);
@@ -22,6 +33,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const cacheUpdateInterval = ref(cached?.cacheUpdateInterval ?? CACHE_INTERVAL_MINUTES);
   const cacheSettingsLocalStorage = ref(!!localStorageSettings?.length);
   const sourcifyUrl = ref(initialSourcifyUrl);
+  const ipfsGatewayUrl = ref(initialIpfsGatewayUrl);
   const showImages = ref(cached?.showImages ?? SHOW_IMAGES);
 
   function toggleShowUsdPrices() {
@@ -48,6 +60,10 @@ export const useSettingsStore = defineStore('settings', () => {
     sourcifyUrl.value = url;
   }
 
+  function setIpfsGatewayUrl(url: string) {
+    ipfsGatewayUrl.value = url;
+  }
+
   function toggleShowImages() {
     showImages.value = !showImages.value;
   }
@@ -64,6 +80,8 @@ export const useSettingsStore = defineStore('settings', () => {
     setCacheSettingsLocalStorage,
     sourcifyUrl,
     setSourcifyUrl,
+    ipfsGatewayUrl,
+    setIpfsGatewayUrl,
     showImages,
     toggleShowImages,
   };

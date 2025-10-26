@@ -8,6 +8,7 @@ import { useAppStore } from '@/stores/app';
 import { useSettingsStore } from '@/stores/settings';
 import LocalStorage from '@/components/settings-view/LocalStorage.vue';
 import SettingsSourcify from '@/components/settings-view/SettingsSourcify.vue';
+import SettingsIPFS from '@/components/settings-view/SettingsIPFS.vue';
 import ShowImages from '@/components/settings-view/ShowImages.vue';
 import MainPageAndAddressCacheManager from '@/cache/main-page-and-address-cache-manager';
 import { isSettingsInLocalStorage } from '@/utils/localstorage';
@@ -137,6 +138,8 @@ const toggleUrlRouting = () => {
       Disconnect <i class="bi bi-door-closed"></i>
     </button>
   </div>
+
+  <SettingsIPFS />
 
   <SettingsSourcify />
 

@@ -72,11 +72,11 @@ The output is 3 files in `dist`: 1 html, 1 js, 1 css.
 
 **(optional) RPC, Sourcify configuration**
 
-You can have the app automatically point to an RPC URL or SOURCIFY URL provided via env variables: `VITE_RPC_URL`, `VITE_SOURCIFY_URL`.
+You can have the app automatically point to an RPC URL, SOURCIFY URL or IPFS GATEWAY URL provided via env variables: `VITE_RPC_URL`, `VITE_SOURCIFY_URL`, `VITE_IPFS_GATEWAY_URL`.
 
 For example:
 ```sh
-npm install && VITE_RPC_URL=<RPC_URL> VITE_SOURCIFY_URL=<SOURCIFY_URL> npm run dev
+npm install && VITE_RPC_URL=<RPC_URL> VITE_SOURCIFY_URL=<SOURCIFY_URL> VITE_IPFS_GATEWAY_URL=<IPFS_GATEWAY_URL> npm run dev
 ```
 
 ## Running RPC backend

@@ -88,6 +88,7 @@ const showSourcifySuccess = (msg: string) => {
 
 const handleSourcifyUrlBlur = () => {
   if (!settingsStore.sourcifyUrl.length) return;
+  showSourcifyWarning('');
 
   if (/^https?:?\/?\/?$/.test(settingsStore.sourcifyUrl)) {
     showSourcifyWarning('Please provide a valid URL');

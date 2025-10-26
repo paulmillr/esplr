@@ -16,7 +16,7 @@ const handleShowImagesChange = () => {
 
 <template>
   <div>
-    <h4>Images</h4>
+    <h4 id="show-images">Images</h4>
     <Checkbox
       label="Show images"
       :checked="settingsStore.showImages"

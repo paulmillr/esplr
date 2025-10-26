@@ -58,9 +58,16 @@ onMounted(async () => {
 
 const loadAndInjectImages = async () => {
   loadingImages.value = true;
+  let noImageCounter = 0;
 
   for (const log of nftLogs.value) {
-    if ('topicsTokenUri' in log && 'tokenMetadata' in log && 'tokenImageResolved' in log) continue;
+    if ('topicsTokenUri' in log && 'tokenMetadata' in log && 'tokenImageResolved' in log) {
+      if (!log.tokenImageResolved?.length) {
+        noImageCounter++;
+      }
+
+      continue;
+    }
 
     const contractAddress = log.address.toLowerCase();
     let uri = '';
@@ -71,8 +78,8 @@ const loadAndInjectImages = async () => {
         uri = await c.tokenURI.call(tempBigInt);
       } catch (e) {}
     }
-  
-    const resolvedUri = ipfsResolve(uri);
+
+    const resolvedUri = ipfsResolve(uri, settingsStore.ipfsGatewayUrl);
     const metadata = resolvedUri.length 
       ? await fetch(resolvedUri).then(res => res.json()).catch(() => null) 
       : null;
@@ -80,13 +87,24 @@ const loadAndInjectImages = async () => {
     const topicsTokenUri = {
       original: uri, 
       resolved: resolvedUri
-    }
+    };
 
-    const tokenImageResolved = metadata?.image ? ipfsResolve(metadata.image) : '';
+    const tokenImageResolved = metadata?.image ? ipfsResolve(metadata.image, settingsStore.ipfsGatewayUrl) : '';
+
+    if (!tokenImageResolved.length) {
+      noImageCounter++;
+    }
 
     log.topicsTokenUri = topicsTokenUri;
     log.tokenMetadata = metadata;
     log.tokenImageResolved = tokenImageResolved;
+  }
+
+  if (noImageCounter === nftLogs.value.length) {
+    loadingImagesError.value = 'Images could not be loaded. The image URIs may not be presented or inaccessible.';
+    setTimeout(() => {
+      loadingImagesError.value = '';
+    }, 7000);
   }
 
   loadingImages.value = false;
@@ -95,8 +113,7 @@ const loadAndInjectImages = async () => {
 const loadNftLogs = async (address: string): Promise<NftLog[]> => {
   loadingNfts.value = true;
 
-  const ercLogs = await prov.tokenTransfers(address, { fromBlock: 22013500 }); // test 
-  // const ercLogs = await prov.tokenTransfers(address);
+  const ercLogs = await prov.tokenTransfers(address);
   const erc721Logs = [];
   for (const logs of ercLogs) {
     for (const log of logs) {
@@ -223,7 +240,7 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
       </div>
       <div v-if="nftLogs.length" class="show-images">
         <Checkbox @onChange="toggleShowImages" :checked="showImagesCheckbox" label="Show images" />
-        <small>(<a href="#">Exposes IP</a>)</small>
+        <small>(<a href="#show-images">Exposes IP</a>)</small>
       </div>
     </div>
 
