@@ -288,3 +288,12 @@ export const getTokenTransfersForTxn = async (
 
   return erc20NetTransfers;
 };
+
+
+export const fetchWithTimeout = (url: string, timeout: number) => {
+  const c = new AbortController();
+  const timeoutId = setTimeout(() => c.abort(), timeout);
+
+  return fetch(url, { signal: c.signal })
+    .finally(() => clearTimeout(timeoutId));
+};

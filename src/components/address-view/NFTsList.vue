@@ -4,6 +4,7 @@ import { Web3Provider } from 'micro-eth-signer/net';
 import { ERC721, events, createContract } from 'micro-eth-signer/abi';
 import { shortenFavAddr, handleClickCopyIcon } from '@/utils/utils';
 import { ipfsResolve } from '@/utils/url';
+import { fetchWithTimeout } from '@/utils/network';
 import Checkbox from '@/components/Checkbox.vue';
 import type { NftLog } from '@/types';
 import { AddressCache } from '@/cache/address/address';
@@ -58,15 +59,11 @@ onMounted(async () => {
 
 const loadAndInjectImages = async () => {
   loadingImages.value = true;
-  let noImageCounter = 0;
 
-  for (const log of nftLogs.value) {
-    if ('topicsTokenUri' in log && 'tokenMetadata' in log && 'tokenImageResolved' in log) {
-      if (!log.tokenImageResolved?.length) {
-        noImageCounter++;
-      }
-
-      continue;
+  const tasks = nftLogs.value.map(async (log) => {
+    if ("topicsTokenUri" in log && "tokenMetadata" in log && "tokenImageResolved" in log) {
+      const noImage = !log.tokenImageResolved?.length;
+      return { log, skip: true, noImage } as const;
     }
 
     const contractAddress = log.address.toLowerCase();
@@ -81,23 +78,37 @@ const loadAndInjectImages = async () => {
 
     const resolvedUri = ipfsResolve(uri, settingsStore.ipfsGatewayUrl);
     const metadata = resolvedUri.length 
-      ? await fetch(resolvedUri).then(res => res.json()).catch(() => null) 
+      ? await fetchWithTimeout(resolvedUri, 5000).then((res: any) => res.json()).catch(() => null) 
       : null;
-    
-    const topicsTokenUri = {
-      original: uri, 
-      resolved: resolvedUri
+
+    const topicsTokenUri = { original: uri, resolved: resolvedUri };
+    const tokenImageResolved =
+      metadata?.image ? ipfsResolve(metadata.image, settingsStore.ipfsGatewayUrl) : '';
+
+    return {
+      log,
+      skip: false,
+      noImage: !tokenImageResolved.length,
+      topicsTokenUri,
+      tokenMetadata: metadata,
+      tokenImageResolved,
     };
+  });
 
-    const tokenImageResolved = metadata?.image ? ipfsResolve(metadata.image, settingsStore.ipfsGatewayUrl) : '';
+  const results = await Promise.all(tasks);
 
-    if (!tokenImageResolved.length) {
-      noImageCounter++;
+  let noImageCounter = 0;
+  for (const r of results) {
+    if (r.skip) {
+      if (r.noImage) noImageCounter++;
+      continue;
     }
 
-    log.topicsTokenUri = topicsTokenUri;
-    log.tokenMetadata = metadata;
-    log.tokenImageResolved = tokenImageResolved;
+    if (r.noImage) noImageCounter++;
+
+    r.log.topicsTokenUri = r.topicsTokenUri!;
+    r.log.tokenMetadata = r.tokenMetadata!;
+    r.log.tokenImageResolved = r.tokenImageResolved!;
   }
 
   if (noImageCounter === nftLogs.value.length) {
