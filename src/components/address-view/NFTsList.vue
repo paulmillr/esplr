@@ -253,7 +253,7 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
         <span v-if="loadingNfts || loadingImages" class="spinner"></span>
         <span v-else>({{ nftLogs.length }} tokens)</span>
       </div>
-      <div class="warning" v-if="!settingsStore.showImages">Images hidden, check settings.</div>
+      <div class="warning" v-if="!settingsStore.showImages && !loadingNfts">Images hidden, check settings.</div>
     </div>
 
     <div v-if="!loadingNfts && !nftLogs.length && !loadingNftError.length" class="no-nfts">
