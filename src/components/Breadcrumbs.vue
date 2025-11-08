@@ -73,7 +73,12 @@ const addressBreadcrumb = (address: string) => {
 <template>
   <div v-if="$route.name !== 'main'" class="breadcrumbs">
     <span
-      v-if="$route.name !== 'settings' && $route.name !== 'address' && $route.name !== 'sourcify' && $route.name !== 'nft'"
+      v-if="
+        $route.name !== 'settings' &&
+        $route.name !== 'address' &&
+        $route.name !== 'sourcify' &&
+        $route.name !== 'nft'
+      "
     >
       / {{ $route.name }} {{ pageHasParams ? '/' : '' }}
       {{ $route.params.tx?.length ? shortenTx($route.params.tx as string) : '' }}

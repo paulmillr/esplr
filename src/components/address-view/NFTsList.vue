@@ -2,10 +2,9 @@
 import { onMounted, ref, inject, type Ref } from 'vue';
 import { Web3Provider } from 'micro-eth-signer/net';
 import { ERC721, events, createContract } from 'micro-eth-signer/abi';
-import { shortenFavAddr, handleClickCopyIcon } from '@/utils/utils';
-import { ipfsResolve } from '@/utils/url';
+import { shortenFavAddr, handleClickCopyIcon, runWithConcurrency } from '@/utils/utils';
+import { ipfsResolve, ipfsResolveWithFallback } from '@/utils/url';
 import { fetchWithTimeout } from '@/utils/network';
-import Checkbox from '@/components/Checkbox.vue';
 import type { NftLog } from '@/types';
 import { AddressCache } from '@/cache/address/address';
 import { useSettingsStore } from '@/stores/settings';
@@ -15,7 +14,7 @@ const ERC721_TRANSFER = events(ERC721).Transfer;
 const provider = inject<Ref<Web3Provider>>('provider');
 if (!provider) throw new Error('Provider not found!');
 const prov = provider.value;
-  
+
 const settingsStore = useSettingsStore();
 const cache = AddressCache.getInstance();
 
@@ -26,14 +25,13 @@ const props = defineProps<{
 const loadingNfts = ref(false);
 const loadingImages = ref(false);
 const nftLogs = ref<NftLog[]>([]);
-const showImagesCheckbox = ref(settingsStore.showImages);
 
 const loadingNftError = ref('');
 const loadingImagesError = ref('');
 
 onMounted(async () => {
   loadingNftError.value = '';
-  
+
   const address = props.address;
   if (!address.length) return;
 
@@ -45,25 +43,23 @@ onMounted(async () => {
       cache.addNftLogs(address, nftLogs.value);
     } catch (e) {
       console.error('Error loading NFT logs:', e);
-      loadingNftError.value = 'NFTs could not be loaded. Ethereum node has limitations or Erigon error has occurred. Check Erigon or node logs.';
+      loadingNftError.value =
+        'NFTs could not be loaded. Ethereum node has limitations or Erigon error has occurred. Check Erigon or node logs.';
       loadingNfts.value = false;
     }
   }
 
-  showImagesCheckbox.value = settingsStore.showImages;
-  if (showImagesCheckbox.value) {
+  if (settingsStore.showImages) {
     await showAndCacheImages(address);
   }
 });
 
-
 const loadAndInjectImages = async () => {
   loadingImages.value = true;
 
-  const tasks = nftLogs.value.map(async (log) => {
-    if ("topicsTokenUri" in log && "tokenMetadata" in log && "tokenImageResolved" in log) {
-      const noImage = !log.tokenImageResolved?.length;
-      return { log, skip: true, noImage } as const;
+  const processLog = async (log: NftLog) => {
+    if ('topicsTokenUri' in log && 'tokenMetadata' in log && 'tokenImageResolved' in log) {
+      return { noImage: !log.tokenImageResolved?.length };
     }
 
     const contractAddress = log.address.toLowerCase();
@@ -76,50 +72,65 @@ const loadAndInjectImages = async () => {
       } catch (e) {}
     }
 
-    const resolvedUri = ipfsResolve(uri, settingsStore.ipfsGatewayUrl);
-    const metadata = resolvedUri.length 
-      ? await fetchWithTimeout(resolvedUri, 5000).then((res: any) => res.json()).catch(() => null) 
+    let resolvedUri = '';
+    if (settingsStore.showHttpsImages && !settingsStore.showIpfsImages) {
+      resolvedUri = ipfsResolveWithFallback(uri);
+    } else if (settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
+      resolvedUri = ipfsResolveWithFallback(uri, settingsStore.ipfsGatewayUrl);
+    } else if (!settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
+      resolvedUri = ipfsResolve(uri, settingsStore.ipfsGatewayUrl);
+    }
+
+    const metadata = resolvedUri.length
+      ? await fetchWithTimeout(resolvedUri, 5000)
+          .then((res: any) => res.json())
+          .catch(() => null)
       : null;
 
     const topicsTokenUri = { original: uri, resolved: resolvedUri };
-    const tokenImageResolved =
-      metadata?.image ? ipfsResolve(metadata.image, settingsStore.ipfsGatewayUrl) : '';
+
+    let tokenImageResolved = '';
+    if (metadata?.image) {
+      if (settingsStore.showHttpsImages && !settingsStore.showIpfsImages) {
+        tokenImageResolved = ipfsResolveWithFallback(metadata.image);
+      } else if (settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
+        tokenImageResolved = ipfsResolveWithFallback(metadata.image, settingsStore.ipfsGatewayUrl);
+      } else if (!settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
+        tokenImageResolved = ipfsResolve(metadata.image, settingsStore.ipfsGatewayUrl);
+      }
+    }
+
+    log.topicsTokenUri = topicsTokenUri;
+    log.tokenMetadata = metadata;
+    log.tokenImageResolved = tokenImageResolved;
 
     return {
-      log,
-      skip: false,
       noImage: !tokenImageResolved.length,
-      topicsTokenUri,
-      tokenMetadata: metadata,
-      tokenImageResolved,
     };
-  });
+  };
 
-  const results = await Promise.all(tasks);
+  const WORKERS = 10;
+  const results = await runWithConcurrency({
+    items: nftLogs.value,
+    concurrency: WORKERS,
+    worker: processLog,
+  });
 
   let noImageCounter = 0;
   for (const r of results) {
-    if (r.skip) {
-      if (r.noImage) noImageCounter++;
-      continue;
-    }
-
     if (r.noImage) noImageCounter++;
-
-    r.log.topicsTokenUri = r.topicsTokenUri!;
-    r.log.tokenMetadata = r.tokenMetadata!;
-    r.log.tokenImageResolved = r.tokenImageResolved!;
   }
 
   if (noImageCounter === nftLogs.value.length) {
-    loadingImagesError.value = 'Images could not be loaded. The image URIs may not be presented or inaccessible.';
+    loadingImagesError.value =
+      'Images could not be loaded. The image URIs may not be presented or inaccessible.';
     setTimeout(() => {
       loadingImagesError.value = '';
     }, 7000);
   }
 
   loadingImages.value = false;
-}
+};
 
 const loadNftLogs = async (address: string): Promise<NftLog[]> => {
   loadingNfts.value = true;
@@ -139,28 +150,27 @@ const loadNftLogs = async (address: string): Promise<NftLog[]> => {
       }
     }
   }
-  
-  const uniqueAddresses = [...new Set(erc721Logs.map(log => log.address))];
-  const tokenInfoPromises = uniqueAddresses
-    .map(async address => {
-      const info = await prov.tokenInfo(address);
-      return { address, info };
-    });
-  
+
+  const uniqueAddresses = [...new Set(erc721Logs.map((log) => log.address))];
+  const tokenInfoPromises = uniqueAddresses.map(async (address) => {
+    const info = await prov.tokenInfo(address);
+    return { address, info };
+  });
+
   const tokenInfoResults = await Promise.all(tokenInfoPromises);
-  
+
   // Update cache with results
   const tokenCache: Record<string, any> = {};
   tokenInfoResults.forEach(({ address, info }) => {
     tokenCache[address] = info;
   });
-  const logsWithTokenInfo = erc721Logs.map(log => ({
+  const logsWithTokenInfo = erc721Logs.map((log) => ({
     ...log,
-    tokenInfo: tokenCache[log.address]
+    tokenInfo: tokenCache[log.address],
   }));
 
-  const erc721 = logsWithTokenInfo.filter(log => 
-    log.tokenInfo?.abi === 'ERC721' && log?.topicsDecoded?.tokenId
+  const erc721 = logsWithTokenInfo.filter(
+    (log) => log.tokenInfo?.abi === 'ERC721' && log?.topicsDecoded?.tokenId
   );
 
   let tokensOwnersFetchErrors = false;
@@ -179,23 +189,25 @@ const loadNftLogs = async (address: string): Promise<NftLog[]> => {
       return {
         ...log,
         topicsTokenOwner: owner,
-      }
+      };
     } catch (e) {
       tokensOwnersFetchErrors = true;
       return null;
     }
   });
-  
+
   const tokensOwnersResults = await Promise.all(tokensOwnersPromises);
   if (tokensOwnersFetchErrors) {
     console.error(`Failed to fetch owners for some tokens.`);
   }
 
-  const tokenOwnersLogs = tokensOwnersResults
-    .filter((log): log is NonNullable<typeof log> => log !== null && log?.topicsTokenOwner.toLowerCase() === address.toLowerCase());
+  const tokenOwnersLogs = tokensOwnersResults.filter(
+    (log): log is NonNullable<typeof log> =>
+      log !== null && log?.topicsTokenOwner.toLowerCase() === address.toLowerCase()
+  );
 
   const seen = new Set();
-  const uniqueUserLogs = tokenOwnersLogs.filter(log => {
+  const uniqueUserLogs = tokenOwnersLogs.filter((log) => {
     const identifier = `${log.address}-${log.topicsDecoded.tokenId}`;
     if (seen.has(identifier)) {
       return false;
@@ -207,16 +219,7 @@ const loadNftLogs = async (address: string): Promise<NftLog[]> => {
 
   loadingNfts.value = false;
   return uniqueUserLogs;
-}
-
-const toggleShowImages = async () => {
-  if (!showImagesCheckbox.value) {
-    const result = await showAndCacheImages(props.address);
-    if (!result) return;
-  }
-  
-  showImagesCheckbox.value = !showImagesCheckbox.value;
-}
+};
 
 const showAndCacheImages = async (address: string): Promise<boolean> => {
   loadingImagesError.value = '';
@@ -229,7 +232,8 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
     cache.addNftLogs(address, nftLogs.value);
   } catch (e) {
     console.error('Error showing images:', e);
-    loadingImagesError.value = 'Images could not be loaded. Ethereum node has limitations or Erigon error has occurred or problem with IPFS server. Check Erigon or node logs or IPFS server.';
+    loadingImagesError.value =
+      'Images could not be loaded. Ethereum node has limitations or Erigon error has occurred or problem with IPFS server. Check Erigon or node logs or IPFS server.';
     setTimeout(() => {
       loadingImagesError.value = '';
     }, 10000);
@@ -238,7 +242,7 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
   }
 
   return true;
-}
+};
 </script>
 
 <template>
@@ -249,10 +253,7 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
         <span v-if="loadingNfts || loadingImages" class="spinner"></span>
         <span v-else>({{ nftLogs.length }} tokens)</span>
       </div>
-      <div v-if="nftLogs.length" class="show-images">
-        <Checkbox @onChange="toggleShowImages" :checked="showImagesCheckbox" label="Show images" />
-        <small>(<a href="#show-images">Exposes IP</a>)</small>
-      </div>
+      <div class="warning" v-if="!settingsStore.showImages">Images hidden, check settings.</div>
     </div>
 
     <div v-if="!loadingNfts && !nftLogs.length && !loadingNftError.length" class="no-nfts">
@@ -276,29 +277,39 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
         <div class="img-wrapper">
           <span class="label small img-label">ERC-721</span>
           <div class="img-container">
-            <img 
-              v-if="showImagesCheckbox && nft?.tokenImageResolved" 
+            <img
+              v-if="nft?.tokenImageResolved?.length"
               :src="nft.tokenImageResolved"
               :alt="`NFT ${nft.topicsDecoded.tokenId}`"
-            >
+            />
             <span v-else>NFT</span>
           </div>
         </div>
         <div>
           <div><b>Token</b>: {{ nft.tokenInfo?.name || '' }}</div>
           <div>
-            <b>Token ID</b>: 
-            {{ nft.topicsDecoded.tokenId.toString().length > 35 ? nft.topicsDecoded.tokenId.toString().slice(0, 35) + '...' : nft.topicsDecoded.tokenId }}
+            <b>Token ID</b>:
+            {{
+              nft.topicsDecoded.tokenId.toString().length > 35
+                ? nft.topicsDecoded.tokenId.toString().slice(0, 35) + '...'
+                : nft.topicsDecoded.tokenId
+            }}
           </div>
-          <div><b>Token Symbol</b>: {{ nft?.tokenMetadata?.symbol?.length ? nft.tokenMetadata.symbol : '-' }}</div>
           <div>
-            <b>NFT Contract Address</b>: 
+            <b>Token Symbol</b>:
+            {{ nft?.tokenMetadata?.symbol?.length ? nft.tokenMetadata.symbol : '-' }}
+          </div>
+          <div>
+            <b>NFT Contract Address</b>:
             <span>
               <RouterLink class="link" :to="`/address/${nft.address}`">
-                {{shortenFavAddr(nft.address)}}
+                {{ shortenFavAddr(nft.address) }}
               </RouterLink>
-            </span> 
-            <i @click="(e: Event) => handleClickCopyIcon(e, nft.address)"class="hash-copy-icon bi bi-copy"></i>
+            </span>
+            <i
+              @click="(e: Event) => handleClickCopyIcon(e, nft.address)"
+              class="hash-copy-icon bi bi-copy"
+            ></i>
           </div>
         </div>
       </div>
@@ -307,98 +318,106 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
 </template>
 
 <style scoped>
-  .nft-details {
-    max-height: 420px;
-    overflow: hidden;
-    overflow-y: auto;
-  }
+.nft-details {
+  max-height: 420px;
+  overflow: hidden;
+  overflow-y: auto;
+}
 
+.nfts-list-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 7px;
+}
+
+@media (min-width: 425px) {
   .nfts-list-header {
-    display: flex;
-    justify-content: space-between;
+    flex-direction: row;
     align-items: center;
-    margin-bottom: 7px;
   }
+}
 
-  .nfts-title {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-  }
+.nfts-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
 
+.nft-item {
+  padding: 10px 0px;
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid var(--ash-grey);
+  word-break: break-word;
+  flex-direction: column;
+}
+
+@media (min-width: 425px) {
   .nft-item {
-    padding: 10px 0px;
-    display: flex;
-    gap: 12px;
-    border-bottom: 1px solid var(--ash-grey);
-    word-break: break-word;
-    flex-direction: column;
-  }
-
-  @media (min-width: 425px) {
-    .nft-item {
-      align-items: center;
-      flex-direction: row;
-    }
-  }
-  
-  .nft-item:last-child {
-    border-bottom: none;
-  }
-
-  .img-wrapper {
-    display: flex;
-    justify-content: center;
     align-items: center;
-    position: relative;
-    border: 1px solid var(--ash-grey);
-    border-radius: var(--std-radius);
-    padding: 12px;
-    width: 135px;
-    height: 135px;
+    flex-direction: row;
   }
-  
-  .img-container {
-    width: 110px;
-    height: 110px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-  }
+}
 
-  .img-container img {
-    max-height: 110px;
-  }
+.nft-item:last-child {
+  border-bottom: none;
+}
 
-  .img-label {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    font-size: 13px;
-    padding: 2px 6px;
-    color: white;
-  }
+.img-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  border: 1px solid var(--ash-grey);
+  border-radius: var(--std-radius);
+  padding: 12px;
+  width: 135px;
+  height: 135px;
+}
 
-  .hash-copy-icon {
-    cursor: pointer;
-    font-style: normal;
-    margin-left: 5px;
-  }
+.img-container {
+  width: 110px;
+  height: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
 
+.img-container img {
+  max-height: 110px;
+}
+
+.img-label {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 13px;
+  padding: 2px 6px;
+  color: white;
+}
+
+.hash-copy-icon {
+  cursor: pointer;
+  font-style: normal;
+  margin-left: 5px;
+}
+
+.show-images {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+@media (min-width: 485px) {
   .show-images {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
+    flex-direction: row;
   }
+}
 
-  @media (min-width: 485px) {
-    .show-images {
-      flex-direction: row;
-    }
-  }
-
-  .warning {
-    font-size: 17px;
-  }
+.warning {
+  font-size: 17px;
+}
 </style>

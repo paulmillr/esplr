@@ -1,9 +1,9 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
-import { SHOW_PRICES, SHOW_IMAGES, CACHE_INTERVAL_MINUTES } from '@/config';
+import { SHOW_PRICES, SHOW_HTTPS_IMAGES, SHOW_IPFS_IMAGES, CACHE_INTERVAL_MINUTES } from '@/config';
 import { normalizeIpfsUrl } from '@/utils/url';
 
-let cached = null;
+let cached: any = null;
 const localStorageSettings = localStorage.getItem('settings');
 if (localStorageSettings?.length) {
   cached = JSON.parse(localStorageSettings);
@@ -23,9 +23,7 @@ if (IPFS_GATEWAY_URL.length && localStorageIpfsGatewayUrl.length) {
   localStorage.removeItem('ipfsGatewayUrl');
 }
 const initialIpfsGatewayUrl =
-  normalizeIpfsUrl(IPFS_GATEWAY_URL) ||
-  IPFS_GATEWAY_URL ||
-  localStorageIpfsGatewayUrl;
+  normalizeIpfsUrl(IPFS_GATEWAY_URL) || IPFS_GATEWAY_URL || localStorageIpfsGatewayUrl;
 
 export const useSettingsStore = defineStore('settings', () => {
   const showUsdPrices = ref(cached?.usdPrices ?? SHOW_PRICES);
@@ -34,7 +32,12 @@ export const useSettingsStore = defineStore('settings', () => {
   const cacheSettingsLocalStorage = ref(!!localStorageSettings?.length);
   const sourcifyUrl = ref(initialSourcifyUrl);
   const ipfsGatewayUrl = ref(initialIpfsGatewayUrl);
-  const showImages = ref(cached?.showImages ?? SHOW_IMAGES);
+  const showHttpsImages = ref(cached?.showHttpsImages ?? SHOW_HTTPS_IMAGES);
+  const showIpfsImages = ref(cached?.showIpfsImages ?? SHOW_IPFS_IMAGES);
+
+  const showImages = computed(
+    () => showHttpsImages.value || (showIpfsImages.value && ipfsGatewayUrl.value.length > 0)
+  );
 
   function toggleShowUsdPrices() {
     showUsdPrices.value = !showUsdPrices.value;
@@ -64,8 +67,12 @@ export const useSettingsStore = defineStore('settings', () => {
     ipfsGatewayUrl.value = url;
   }
 
-  function toggleShowImages() {
-    showImages.value = !showImages.value;
+  function toggleShowHttpsImages() {
+    showHttpsImages.value = !showHttpsImages.value;
+  }
+
+  function toggleShowIpfsImages() {
+    showIpfsImages.value = !showIpfsImages.value;
   }
 
   return {
@@ -82,7 +89,10 @@ export const useSettingsStore = defineStore('settings', () => {
     setSourcifyUrl,
     ipfsGatewayUrl,
     setIpfsGatewayUrl,
+    showHttpsImages,
+    showIpfsImages,
+    toggleShowHttpsImages,
+    toggleShowIpfsImages,
     showImages,
-    toggleShowImages,
   };
 });

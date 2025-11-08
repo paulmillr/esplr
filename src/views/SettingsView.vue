@@ -8,7 +8,6 @@ import { useAppStore } from '@/stores/app';
 import { useSettingsStore } from '@/stores/settings';
 import LocalStorage from '@/components/settings-view/LocalStorage.vue';
 import SettingsSourcify from '@/components/settings-view/SettingsSourcify.vue';
-import SettingsIPFS from '@/components/settings-view/SettingsIPFS.vue';
 import ShowImages from '@/components/settings-view/ShowImages.vue';
 import MainPageAndAddressCacheManager from '@/cache/main-page-and-address-cache-manager';
 import { isSettingsInLocalStorage } from '@/utils/localstorage';
@@ -85,7 +84,8 @@ const updateSettingsInLocalStorage = () => {
     },
     usdPrices: settingsStore.showUsdPrices,
     cacheUpdateInterval: settingsStore.cacheUpdateInterval,
-    showImages: settingsStore.showImages,
+    showHttpsImages: settingsStore.showHttpsImages,
+    showIpfsImages: settingsStore.showIpfsImages,
   };
   localStorage.setItem('settings', JSON.stringify(settings));
 };
@@ -128,8 +128,7 @@ const toggleUrlRouting = () => {
   </div>
   <div class="connected-to">
     Connected to
-    <b>{{ networkName }}</b
-    > (Chain ID {{ appStore.chainId }}):
+    <b>{{ networkName }}</b> (Chain ID {{ appStore.chainId }}):
     <br />
     {{ appStore.rpcUrl }}
   </div>
@@ -139,7 +138,7 @@ const toggleUrlRouting = () => {
     </button>
   </div>
 
-  <SettingsIPFS />
+  <ShowImages @updateSettingsInLocalStorage="updateSettingsInLocalStorage" />
 
   <SettingsSourcify />
 
@@ -199,8 +198,8 @@ const toggleUrlRouting = () => {
     <div v-if="hasMainPageCache">Main page is cached.</div>
     <div v-if="favoriteAddresses.length">Favorites addresses list is cached.</div>
     <div v-if="settingsStore.cacheSettingsLocalStorage">
-      ⚠️ Settings is cached in the browser's local storage on disk.
-      Disable this option above to remove settings from local storage.
+      ⚠️ Settings is cached in the browser's local storage on disk. Disable this option above to
+      remove settings from local storage.
     </div>
     <div class="clear-cache-btn-wrapper">
       <button
@@ -218,8 +217,6 @@ const toggleUrlRouting = () => {
       No cached data for addresses.
     </div>
   </div>
-
-  <ShowImages @updateSettingsInLocalStorage="updateSettingsInLocalStorage" />
 </template>
 
 <style scoped>

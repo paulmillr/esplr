@@ -81,8 +81,8 @@ const toggleFavorite = () => {
         class="warning txns-sent-warning"
       >
         <i class="bi bi-exclamation-triangle"></i>
-        Check the address value. Or Erigon OTS namespace is disabled or Ethereum node has limitations
-        or Erigon error has occurred. Check Erigon or node logs.
+        Check the address value. Or Erigon OTS namespace is disabled or Ethereum node has
+        limitations or Erigon error has occurred. Check Erigon or node logs.
       </div>
 
       <div class="actions">
@@ -93,10 +93,20 @@ const toggleFavorite = () => {
             {{ isFavorite ? 'Unfavorite' : 'Add to favorite' }}
           </button>
           <div class="nfts-btn-wrapper">
-            <RouterLink v-if="!isNFT" :to="`/address/${address}/nft`" class="btn btn-dark nfts-link" title="NFTs">
+            <RouterLink
+              v-if="!isNFT"
+              :to="`/address/${address}/nft`"
+              class="btn btn-dark nfts-link"
+              title="NFTs"
+            >
               NFTs
             </RouterLink>
-            <RouterLink v-if="isNFT" :to="`/address/${address}`" class="btn btn-dark nfts-link" title="Balances">
+            <RouterLink
+              v-if="isNFT"
+              :to="`/address/${address}`"
+              class="btn btn-dark nfts-link"
+              title="Balances"
+            >
               Balances
             </RouterLink>
           </div>

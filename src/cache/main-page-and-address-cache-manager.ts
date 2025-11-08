@@ -20,7 +20,9 @@ export default class MainPageAndAddressCacheManager {
     if (mainPageType !== addressType) {
       this.useMemoryStorage();
       localStorage.clear();
-      throw new Error('Address cache and main page cache have different storage types. This may cause issues.');
+      throw new Error(
+        'Address cache and main page cache have different storage types. This may cause issues.'
+      );
     }
 
     return mainPageType;

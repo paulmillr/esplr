@@ -4,7 +4,7 @@ import type {
   TokenBalance,
   TransactionListItem,
   UnspentWithUsd,
-  NftLog
+  NftLog,
 } from '@/types';
 import { type AddressStorage } from '@/cache/address/address-storage';
 
@@ -99,7 +99,7 @@ export class MemoryAddressStorage implements AddressStorage {
         ...this.tokenInfo.keys(),
         ...this.tokenCreator.keys(),
         ...this.ens.keys(),
-        ...this.nftLogs.keys()
+        ...this.nftLogs.keys(),
       ])
     );
   }
@@ -378,8 +378,18 @@ export class MemoryAddressStorage implements AddressStorage {
   addNftLogs(address: string, logs: NftLog[]): void {
     this.nftLogs.set(address, logs);
   }
- 
+
   hasNftLogs(address: string): boolean {
     return this.nftLogs.has(address);
+  }
+
+  clearNftLogsImages(): void {
+    this.nftLogs.forEach((logs) => {
+      logs.forEach((log) => {
+        delete log.tokenImageResolved;
+        delete log.topicsTokenUri;
+        delete log.tokenMetadata;
+      });
+    });
   }
 }

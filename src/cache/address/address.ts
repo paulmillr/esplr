@@ -4,7 +4,7 @@ import type {
   TokenBalance,
   TransactionListItem,
   UnspentWithUsd,
-  NftLog
+  NftLog,
 } from '@/types';
 import { MemoryAddressStorage } from '@/cache/address/memory-address-storage';
 import { LocalStorageAddressStorage } from '@/cache/address/localstorage-address-storage';
@@ -274,5 +274,9 @@ export class AddressCache {
 
   hasNftLogs(address: string): boolean {
     return AddressCache.strategy.hasNftLogs(address);
+  }
+
+  clearNftLogsImages(): void {
+    AddressCache.strategy.clearNftLogsImages();
   }
 }

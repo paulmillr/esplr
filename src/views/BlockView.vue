@@ -58,9 +58,9 @@ const mount = async (block: string) => {
   gasUsed.value = details.gasUsed;
   gasLimit.value = details.gasLimit;
   baseFeePerGas.value = details.baseFeePerGas
-  ? `${fromWeiToGwei(details.baseFeePerGas, 9)} Gwei`
-  : '-';
-  
+    ? `${fromWeiToGwei(details.baseFeePerGas, 9)} Gwei`
+    : '-';
+
   try {
     blobGasUsed.value = details?.blobGasUsed.length ? hexToNumber(details.blobGasUsed) : 0n;
   } catch (error) {

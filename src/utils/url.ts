@@ -32,12 +32,19 @@ export function hasProtocol(url: string) {
   }
 }
 
-export function ipfsResolve(url: string, resolveUrl: string) {
+export function ipfsResolveWithFallback(url: string, resolveUrl = '') {
   if (url.startsWith('ipfs://')) {
     const resolve = resolveUrl.length ? resolveUrl : DEFAULT_IPFS_GATEWAY_URL;
     return url.replace('ipfs://', resolve);
   }
   return url;
+}
+
+export function ipfsResolve(url: string, resolveUrl: string) {
+  if (url.startsWith('ipfs://') && resolveUrl) {
+    return url.replace('ipfs://', resolveUrl);
+  }
+  return '';
 }
 
 export function normalizeIpfsUrl(url: string) {

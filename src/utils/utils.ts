@@ -443,3 +443,33 @@ export const lastTxnsDataFromBlocks = (blocks: BlockInfo[], limit: number) => {
   } catch {}
   return txnsData;
 };
+
+type WorkerFn<T, R> = (item: T, index: number) => Promise<R> | R;
+
+export async function runWithConcurrency<T, R>(opts: {
+  items: T[];
+  concurrency: number;
+  worker: WorkerFn<T, R>;
+}): Promise<R[]> {
+  const { items, concurrency, worker } = opts;
+
+  if (concurrency < 1) {
+    throw new Error('concurrency must be at least 1');
+  }
+
+  const results: R[] = new Array(items.length);
+  const queue = items.map((item, index) => ({ item, index }));
+
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length) {
+      const next = queue.shift();
+      if (!next) break;
+      const { item, index } = next;
+      const res = await worker(item, index);
+      results[index] = res;
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}

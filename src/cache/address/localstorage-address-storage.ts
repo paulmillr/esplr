@@ -4,7 +4,7 @@ import type {
   TokenBalance,
   TransactionListItem,
   UnspentWithUsd,
-  NftLog
+  NftLog,
 } from '@/types';
 import { type AddressStorage } from '@/cache/address/address-storage';
 import { stringify, parse } from '@/utils/json';
@@ -89,7 +89,7 @@ export class LocalStorageAddressStorage implements AddressStorage {
       tokenInfo,
       tokenCreator,
       ens,
-      nftLogs
+      nftLogs,
     } = this.getAllCachedData();
 
     addresses.forEach((address) => {
@@ -123,7 +123,7 @@ export class LocalStorageAddressStorage implements AddressStorage {
       tokenInfo,
       tokenCreator,
       ens,
-      nftLogs
+      nftLogs,
     } = this.getAllCachedData();
 
     const favorites = this.getFavoriteAddresses();
@@ -163,7 +163,7 @@ export class LocalStorageAddressStorage implements AddressStorage {
       tokenInfo,
       tokenCreator,
       ens,
-      nftLogs
+      nftLogs,
     } = this.getAllCachedData();
 
     return Array.from(
@@ -176,7 +176,7 @@ export class LocalStorageAddressStorage implements AddressStorage {
         ...Object.keys(tokenInfo),
         ...Object.keys(tokenCreator),
         ...Object.keys(ens),
-        ...Object.keys(nftLogs)
+        ...Object.keys(nftLogs),
       ])
     );
   }
@@ -201,7 +201,7 @@ export class LocalStorageAddressStorage implements AddressStorage {
       tokenInfo,
       tokenCreator,
       ens,
-      nftLogs
+      nftLogs,
     };
   };
 
@@ -551,5 +551,17 @@ export class LocalStorageAddressStorage implements AddressStorage {
   hasNftLogs(address: string): boolean {
     const cached = this.getFromLocalStorage('nftLogs') ?? {};
     return address in cached;
+  }
+
+  clearNftLogsImages(): void {
+    const cached = (this.getFromLocalStorage('nftLogs') ?? {}) as Record<string, NftLog[]>;
+    Object.values(cached).forEach((logs: NftLog[]) => {
+      logs.forEach((log) => {
+        delete log.tokenImageResolved;
+        delete log.topicsTokenUri;
+        delete log.tokenMetadata;
+      });
+    });
+    this.saveToLocalStorage('nftLogs', cached);
   }
 }

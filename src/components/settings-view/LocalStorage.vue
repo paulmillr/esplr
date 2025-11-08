@@ -18,16 +18,14 @@ try {
   console.error('Error initializing cache type.', error);
 }
 
-const cacheInLocalStorage = computed(
-  () => cacheType.value === 'localstorage'
-);
+const cacheInLocalStorage = computed(() => cacheType.value === 'localstorage');
 
 function showWarning() {
   warning.value = true;
   setTimeout(() => {
     warning.value = false;
   }, 7000);
-};
+}
 
 const isSettingsInLocalStorage = () => !!localStorage.getItem('settings')?.length;
 

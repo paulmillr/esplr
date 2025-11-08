@@ -48,7 +48,7 @@ const checkGatewayConnect = async () => {
   if (remember.value) {
     localStorage.setItem('ipfsGatewayUrl', settingsStore.ipfsGatewayUrl);
   }
-  
+
   try {
     const CID_GATEWAY_CHECKER = 'bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m';
     const testUrl = `${settingsStore.ipfsGatewayUrl}${CID_GATEWAY_CHECKER}`;
@@ -119,19 +119,8 @@ const handleRememberMe = () => {
 
 <template>
   <div>
-    <h4 class="ipfs-header">
-      <img class="ipfs-icon" src="@/assets/ipfs.svg" alt="IPFS logo" />
-      IPFS
-    </h4>
     <div class="description">
-      <p>
-        To resolve <code>ipfs://</code> links for NFTs, provide your IPFS gateway URL.
-        If empty, the default public gateway <code>ipfs.io/ipfs/</code> will be used.
-        Check out README for more options and info.
-      </p>
-      <p>
-        ⚠️ Provided URL used only when "<a href="#show-images">Show images</a>" option is enabled. Some NFTs provide own IPFS gateways, which will <a href="#show-images">leak your ip+browser</a>.
-      </p>
+      <p>To resolve <code>ipfs://</code> links for NFTs, provide your IPFS gateway URL.</p>
     </div>
     <div class="ipfs-field">
       <input
@@ -156,11 +145,6 @@ const handleRememberMe = () => {
 </template>
 
 <style scoped>
-.ipfs-icon {
-  width: 20px;
-  height: 20px;
-}
-
 .ipfs-field {
   display: flex;
   align-items: normal;
@@ -185,11 +169,5 @@ const handleRememberMe = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.ipfs-header {
-  display: flex;
-  align-items: center;
-  gap: 5px;
 }
 </style>

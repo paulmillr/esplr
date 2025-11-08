@@ -123,8 +123,8 @@ const mount = async (tx: string) => {
   gasPrice.value = txn.info.gasPrice;
   gasUsed.value = txn.receipt ? txn.receipt.gasUsed : 0n;
   gasLimit.value = txn.info.gas;
-  maxFeePerGas.value = txn.info.maxFeePerGas
-  maxPriorityFeePerGas.value = txn.info.maxPriorityFeePerGas
+  maxFeePerGas.value = txn.info.maxFeePerGas;
+  maxPriorityFeePerGas.value = txn.info.maxPriorityFeePerGas;
   input.value = txn.info.input;
 
   if (txn.receipt && gasUsed.value > 0n) {
@@ -134,21 +134,21 @@ const mount = async (tx: string) => {
       transactionFee.value = effectiveGasPrice * gasUsed;
     } else if (maxFeePerGas.value && maxPriorityFeePerGas.value && blockBaseFeePerGas.value) {
       const effectiveGasPrice = blockBaseFeePerGas.value + maxPriorityFeePerGas.value;
-      const actualGasPrice = effectiveGasPrice > maxFeePerGas.value
-        ? maxFeePerGas.value
-        : effectiveGasPrice;
+      const actualGasPrice =
+        effectiveGasPrice > maxFeePerGas.value ? maxFeePerGas.value : effectiveGasPrice;
       transactionFee.value = actualGasPrice * gasUsed;
     } else if (type.value === 'legacy' && gasPrice.value > 0n) {
       transactionFee.value = gasPrice.value * gasUsed;
     }
 
     // only for EIP-1559 (baseFeePerGas, maxFeePerGas, maxPriorityFeePerGas prensented with EIP-1559)
-    feeBurned.value = blockBaseFeePerGas.value
-      ? gasUsed * blockBaseFeePerGas.value : undefined;
-    feeMiner.value = feeBurned.value && transactionFee.value
-      ? transactionFee.value - feeBurned.value : undefined;
-    feeSaved.value = maxFeePerGas.value && transactionFee.value
-      ? (maxFeePerGas.value * gasUsed) - transactionFee.value : undefined;
+    feeBurned.value = blockBaseFeePerGas.value ? gasUsed * blockBaseFeePerGas.value : undefined;
+    feeMiner.value =
+      feeBurned.value && transactionFee.value ? transactionFee.value - feeBurned.value : undefined;
+    feeSaved.value =
+      maxFeePerGas.value && transactionFee.value
+        ? maxFeePerGas.value * gasUsed - transactionFee.value
+        : undefined;
   }
 
   isLoadingTxnBaseInfo.value = false;
@@ -332,9 +332,7 @@ const mount = async (tx: string) => {
       <div class="field-title">Transaction Fee:</div>
       <div class="eth-value" v-if="!isLoadingTxnBaseInfo">
         <div>
-          <span v-if="transactionFee > 0">
-            {{ fromWeiToEth(transactionFee, 18) }} ETH
-          </span>
+          <span v-if="transactionFee > 0"> {{ fromWeiToEth(transactionFee, 18) }} ETH </span>
           <span v-else>-</span>
         </div>
 
@@ -343,11 +341,13 @@ const mount = async (tx: string) => {
             <span v-if="feeBurned !== undefined" class="label small fee-chip burned">
               🔥 Burnt: {{ fromWeiToEth(feeBurned, 18) }} ETH
             </span>
-          </div><div>
+          </div>
+          <div>
             <span v-if="feeSaved !== undefined && feeSaved >= 0" class="label small fee-chip saved">
               💸 Sender savings: {{ fromWeiToEth(feeSaved, 18) }} ETH
             </span>
-          </div><div>
+          </div>
+          <div>
             <span v-if="feeMiner !== undefined && feeMiner >= 0" class="label small fee-chip">
               💰 Txn miner's reward: {{ fromWeiToEth(feeMiner, 18) }} ETH
             </span>
@@ -370,27 +370,36 @@ const mount = async (tx: string) => {
       <div class="field-title">Max Fee Per Gas:</div>
       <div v-if="!isLoadingTxnBaseInfo" class="eth-value">
         <span v-if="maxFeePerGas !== undefined">
-          {{ fromWeiToGwei(maxFeePerGas, 9) }} Gwei <small>({{ fromWeiToEth(maxFeePerGas, 18) }} ETH)</small>
+          {{ fromWeiToGwei(maxFeePerGas, 9) }} Gwei
+          <small>({{ fromWeiToEth(maxFeePerGas, 18) }} ETH)</small>
         </span>
         <span v-else>-</span>
       </div>
     </div>
 
     <div class="field field-align-center-sm">
-      <div class="field-title">Max Priority Fee <br/> Per Gas:</div>
+      <div class="field-title">
+        Max Priority Fee <br />
+        Per Gas:
+      </div>
       <div v-if="!isLoadingTxnBaseInfo" class="eth-value">
         <span v-if="maxPriorityFeePerGas !== undefined">
-          {{ fromWeiToGwei(maxPriorityFeePerGas, 9) }} Gwei <small>({{ fromWeiToEth(maxPriorityFeePerGas, 18) }} ETH)</small>
+          {{ fromWeiToGwei(maxPriorityFeePerGas, 9) }} Gwei
+          <small>({{ fromWeiToEth(maxPriorityFeePerGas, 18) }} ETH)</small>
         </span>
         <span v-else>-</span>
       </div>
     </div>
 
     <div class="field field-align-center-sm">
-      <div class="field-title">Block Base Fee <br/> Per Gas:</div>
+      <div class="field-title">
+        Block Base Fee <br />
+        Per Gas:
+      </div>
       <div v-if="!isLoadingTxnBaseInfo && !blockError" class="eth-value">
         <span v-if="blockBaseFeePerGas !== undefined">
-          {{ fromWeiToGwei(blockBaseFeePerGas, 9) }} Gwei <small>({{ fromWeiToEth(blockBaseFeePerGas, 18) }} ETH)</small>
+          {{ fromWeiToGwei(blockBaseFeePerGas, 9) }} Gwei
+          <small>({{ fromWeiToEth(blockBaseFeePerGas, 18) }} ETH)</small>
         </span>
         <span v-else>-</span>
       </div>

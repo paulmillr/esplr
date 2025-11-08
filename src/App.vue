@@ -94,7 +94,8 @@ const handleConnect = async (url: string) => {
 
   <div v-if="!connected">
     The app needs an archive node as a backend because of specific API calls.<br />
-    Non-archive nodes from the list below can still be used, but the functionality would become limited:<br />
+    Non-archive nodes from the list below can still be used, but the functionality would become
+    limited:<br />
     <ul style="margin-top: 5px">
       <li>
         <a target="_blank" href="https://chainlist.org/chain/1">chainlist.org</a>

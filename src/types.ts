@@ -1,4 +1,9 @@
-import type { TxInfo, Unspent, TokenTransfer, Log } from 'node_modules/micro-eth-signer/net/archive';
+import type {
+  TxInfo,
+  Unspent,
+  TokenTransfer,
+  Log,
+} from 'node_modules/micro-eth-signer/net/archive';
 
 export type TxInfoExtended = TxInfo & {
   blockData: {

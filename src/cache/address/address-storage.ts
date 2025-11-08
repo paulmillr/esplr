@@ -80,4 +80,5 @@ export interface AddressStorage {
   getNftLogs(address: string): NftLog[];
   addNftLogs(address: string, logs: NftLog[]): void;
   hasNftLogs(address: string): boolean;
+  clearNftLogsImages(): void;
 }
