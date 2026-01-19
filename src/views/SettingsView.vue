@@ -11,6 +11,7 @@ import SettingsSourcify from '@/components/settings-view/SettingsSourcify.vue';
 import ShowImages from '@/components/settings-view/ShowImages.vue';
 import MainPageAndAddressCacheManager from '@/cache/main-page-and-address-cache-manager';
 import { isSettingsInLocalStorage } from '@/utils/localstorage';
+import ExampleAddresses from '@/components/settings-view/ExampleAddresses.vue';
 
 const provider = inject<Ref<Web3Provider>>('provider');
 if (!provider) throw new Error('Provider not found!');
@@ -137,6 +138,8 @@ const toggleUrlRouting = () => {
       Disconnect <i class="bi bi-door-closed"></i>
     </button>
   </div>
+
+  <ExampleAddresses />
 
   <ShowImages @updateSettingsInLocalStorage="updateSettingsInLocalStorage" />
 

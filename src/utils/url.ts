@@ -47,6 +47,22 @@ export function ipfsResolve(url: string, resolveUrl: string) {
   return '';
 }
 
+export function ipfsSettingsResolve(
+  url: string,
+  showHttps: boolean,
+  showIpfs: boolean,
+  gatewayUrl: string
+) {
+  if (showHttps && !showIpfs) {
+    return ipfsResolveWithFallback(url);
+  } else if (showHttps && showIpfs) {
+    return ipfsResolveWithFallback(url, gatewayUrl);
+  } else if (!showHttps && showIpfs) {
+    return ipfsResolve(url, gatewayUrl);
+  }
+  return '';
+}
+
 export function normalizeIpfsUrl(url: string) {
   let u = url.trim();
   if (!u.length) return '';

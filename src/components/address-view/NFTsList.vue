@@ -3,7 +3,7 @@ import { onMounted, ref, inject, type Ref } from 'vue';
 import { Web3Provider } from 'micro-eth-signer/net';
 import { ERC721, events, createContract } from 'micro-eth-signer/abi';
 import { shortenFavAddr, handleClickCopyIcon, runWithConcurrency } from '@/utils/utils';
-import { ipfsResolve, ipfsResolveWithFallback } from '@/utils/url';
+import { ipfsSettingsResolve } from '@/utils/url';
 import { fetchWithTimeout } from '@/utils/network';
 import type { NftLog } from '@/types';
 import { AddressCache } from '@/cache/address/address';
@@ -72,14 +72,12 @@ const loadAndInjectImages = async () => {
       } catch (e) {}
     }
 
-    let resolvedUri = '';
-    if (settingsStore.showHttpsImages && !settingsStore.showIpfsImages) {
-      resolvedUri = ipfsResolveWithFallback(uri);
-    } else if (settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
-      resolvedUri = ipfsResolveWithFallback(uri, settingsStore.ipfsGatewayUrl);
-    } else if (!settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
-      resolvedUri = ipfsResolve(uri, settingsStore.ipfsGatewayUrl);
-    }
+    const resolvedUri = ipfsSettingsResolve(
+      uri,
+      settingsStore.showHttpsImages,
+      settingsStore.showIpfsImages,
+      settingsStore.ipfsGatewayUrl
+    );
 
     const metadata = resolvedUri.length
       ? await fetchWithTimeout(resolvedUri, 5000)
@@ -91,13 +89,12 @@ const loadAndInjectImages = async () => {
 
     let tokenImageResolved = '';
     if (metadata?.image) {
-      if (settingsStore.showHttpsImages && !settingsStore.showIpfsImages) {
-        tokenImageResolved = ipfsResolveWithFallback(metadata.image);
-      } else if (settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
-        tokenImageResolved = ipfsResolveWithFallback(metadata.image, settingsStore.ipfsGatewayUrl);
-      } else if (!settingsStore.showHttpsImages && settingsStore.showIpfsImages) {
-        tokenImageResolved = ipfsResolve(metadata.image, settingsStore.ipfsGatewayUrl);
-      }
+      tokenImageResolved = ipfsSettingsResolve(
+        metadata.image,
+        settingsStore.showHttpsImages,
+        settingsStore.showIpfsImages,
+        settingsStore.ipfsGatewayUrl
+      );
     }
 
     log.topicsTokenUri = topicsTokenUri;
@@ -253,7 +250,9 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
         <span v-if="loadingNfts || loadingImages" class="spinner"></span>
         <span v-else>({{ nftLogs.length }} tokens)</span>
       </div>
-      <div class="warning" v-if="!settingsStore.showImages && !loadingNfts">Images hidden, check settings.</div>
+      <div class="warning" v-if="!settingsStore.showImages && !loadingNfts">
+        Images hidden, check settings.
+      </div>
     </div>
 
     <div v-if="!loadingNfts && !nftLogs.length && !loadingNftError.length" class="no-nfts">
@@ -289,11 +288,13 @@ const showAndCacheImages = async (address: string): Promise<boolean> => {
           <div><b>Token</b>: {{ nft.tokenInfo?.name || '' }}</div>
           <div>
             <b>Token ID</b>:
-            {{
-              nft.topicsDecoded.tokenId.toString().length > 35
-                ? nft.topicsDecoded.tokenId.toString().slice(0, 35) + '...'
-                : nft.topicsDecoded.tokenId
-            }}
+            <RouterLink class="link" :to="`/nft/${nft.address}/${nft.topicsDecoded.tokenId}`">
+              {{
+                nft.topicsDecoded.tokenId.toString().length > 35
+                  ? nft.topicsDecoded.tokenId.toString().slice(0, 35) + '...'
+                  : nft.topicsDecoded.tokenId
+              }}
+            </RouterLink>
           </div>
           <div>
             <b>Token Symbol</b>:

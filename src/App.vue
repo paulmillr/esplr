@@ -107,6 +107,8 @@ const handleConnect = async (url: string) => {
         <a target="_blank" href="https://chainid.network/chain/1/">chainid.network</a>
       </li>
     </ul>
+
+    <p>To check app features, see the test addresses in Settings after connecting.</p>
   </div>
 
   <div v-if="connected">

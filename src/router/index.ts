@@ -5,6 +5,7 @@ import TransactionView from '@/views/TransactionView.vue';
 import BlockView from '@/views/BlockView.vue';
 import SettingsView from '@/views/SettingsView.vue';
 import BlockTransactions from '@/views/BlockTransactions.vue';
+import NftView from '@/views/NftView.vue';
 
 const router = createRouter({
   // history: createWebHistory(import.meta.env.BASE_URL),
@@ -19,6 +20,11 @@ const router = createRouter({
       component: MainView,
     },
     {
+      path: '/nft/:address/:token',
+      name: 'nft',
+      component: NftView,
+    },
+    {
       path: '/address/:address',
       name: 'address',
       component: AddressView,
@@ -30,7 +36,7 @@ const router = createRouter({
     },
     {
       path: '/address/:address/nft',
-      name: 'nft',
+      name: 'nfts',
       component: AddressView,
     },
     {

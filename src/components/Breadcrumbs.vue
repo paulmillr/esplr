@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUpdate, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { shortenAddr10, shortenTx } from '@/utils/utils';
+import { useRoute } from 'vue-router';
+import { shortenAddr10, shortenAddr, shortenTx, sliceTo } from '@/utils/utils';
 import { AddressCache } from '@/cache/address/address';
 
 const route = useRoute();
@@ -77,19 +77,26 @@ const addressBreadcrumb = (address: string) => {
         $route.name !== 'settings' &&
         $route.name !== 'address' &&
         $route.name !== 'sourcify' &&
-        $route.name !== 'nft'
+        $route.name !== 'nfts'
       "
     >
-      / {{ $route.name }} {{ pageHasParams ? '/' : '' }}
+      / {{ $route.name }} {{ pageHasParams && $route.name !== 'nft' ? '/' : '' }}
       {{ $route.params.tx?.length ? shortenTx($route.params.tx as string) : '' }}
       {{ $route.params.block?.length ? $route.params.block : '' }}
     </span>
 
-    <span v-if="$route.name === 'address' || $route.name === 'sourcify' || $route.name === 'nft'">
+    <span v-if="$route.name === 'address' || $route.name === 'sourcify' || $route.name === 'nfts'">
       {{ $route.params.address?.length ? addressBreadcrumb($route.params.address as string) : '' }}
     </span>
 
     <span v-if="$route.name === 'settings'"> / Settings </span>
+
+    <span v-if="$route.name === 'nft'">
+      /
+      {{ $route.params.address?.length ? shortenAddr($route.params.address as string) : '' }}
+      /
+      {{ $route.params.token?.length ? sliceTo($route.params.token as string, 10) : '' }}
+    </span>
   </div>
   <div class="back-to" v-if="prevRouteValue">
     Back to {{ prevRouteValue.type }}

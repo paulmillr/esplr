@@ -78,7 +78,7 @@ const currentPage = ref(1);
 
 const isSourcify = computed(() => route.name === 'sourcify');
 const isFavorites = computed(() => route.name === 'favorites');
-const isNFT = computed(() => route.name === 'nft');
+const isNFT = computed(() => route.name === 'nfts');
 const favorites = ref<FavoriteAddress[]>([]);
 
 const sumUnspentTxns = ref(0n);

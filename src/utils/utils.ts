@@ -55,6 +55,16 @@ export const handleClickCopyIcon = (event: Event, text: string) => {
   }, 2000);
 };
 
+export const sliceTo = (text: string, maxLength: number) => {
+  if (!text?.length) {
+    return '';
+  }
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength)}...`;
+};
+
 export const shortenFavAddr = (address: string | null) => {
   if (!address?.length) {
     return '-';
