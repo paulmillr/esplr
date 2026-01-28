@@ -1,7 +1,3 @@
-<script setup lang="ts">
-import { handleClickCopyIcon } from '@/utils/utils';
-</script>
-
 <template>
   <div class="example-addresses">
     <h4>Test addresses</h4>

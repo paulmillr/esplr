@@ -56,12 +56,7 @@ const readableTokenBalance = (token: TokenBalance) => {
     <div class="total-usd" v-if="!loadingTokens && !someError && totalUsd > 0">
       Total: {{ formatUsdPrice(totalUsd) }}
     </div>
-    <div
-      :class="[
-        'tokens-holdings',
-        { 'tokens-holdings_no-scroll': tokens.length <= 4 && !someError },
-      ]"
-    >
+    <div :class="['tokens-holdings']">
       <div v-if="!unspentError">
         <div v-if="!loadingUnspent">
           {{ fromWeiToEth(unspentEth, 18) }} ETH
@@ -138,10 +133,6 @@ const readableTokenBalance = (token: TokenBalance) => {
   max-height: 170px;
   overflow-y: scroll;
   word-break: break-word;
-}
-
-.tokens-holdings_no-scroll {
-  overflow-y: hidden;
 }
 
 .token-name {
