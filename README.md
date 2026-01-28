@@ -70,7 +70,13 @@ cd dist && python3 -m http.server --bind 127.0.0.1
 
 The output is 3 files in `dist`: 1 html, 1 js, 1 css.
 
-**(optional) RPC, Sourcify configuration**
+### Docker image
+
+Continuously re-generated via GitHub Actions and published to Docker registry.
+
+See [relevant Docker image URL](https://github.com/paulmillr/esplr/actions/workflows/docker.yml).
+
+### Optional: RPC and Sourcify configuration
 
 You can have the app automatically point to an RPC URL, SOURCIFY URL or IPFS GATEWAY URL provided via env variables: `VITE_RPC_URL`, `VITE_SOURCIFY_URL`, `VITE_IPFS_GATEWAY_URL`.
 
