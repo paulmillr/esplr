@@ -2,6 +2,10 @@
 
 Explore Ethereum-like blockchain privately with your RPC URL.
 
+> [!IMPORTANT]
+> The package got merged into [micro-eth-signer](https://github.com/paulmillr/micro-eth-signer).
+> Check out its examples directory.
+
 - 🔒 No 3rd party services: only private RPC requests
 - 💹 ETH and token balances, transaction history
 - 💵 On-chain USD price conversion from oracles
